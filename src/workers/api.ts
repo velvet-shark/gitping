@@ -66,7 +66,7 @@ export default {
 
         if (!code) {
           // Redirect to frontend login with error
-          const frontendUrl = this.env.FRONTEND_URL || 'https://gitping.pages.dev';
+          const frontendUrl = env.FRONTEND_URL || 'https://gitping.pages.dev';
           
           return new Response(null, {
             status: 302,
@@ -112,7 +112,7 @@ export default {
           const token = await auth.createJWT(user.id, sessionId);
 
           // Redirect to frontend dashboard with auth cookie
-          const frontendUrl = this.env.FRONTEND_URL || 'https://gitping.pages.dev';
+          const frontendUrl = env.FRONTEND_URL || 'https://gitping.pages.dev';
           
           return new Response(null, {
             status: 302,
@@ -125,7 +125,7 @@ export default {
 
         } catch (error) {
           // Redirect to frontend login with error message
-          const frontendUrl = this.env.FRONTEND_URL || 'https://gitping.pages.dev';
+          const frontendUrl = env.FRONTEND_URL || 'https://gitping.pages.dev';
           const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
           
           return new Response(null, {
