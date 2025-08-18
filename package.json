@@ -1,0 +1,37 @@
+{
+  "name": "gitping",
+  "version": "1.0.0",
+  "description": "Instant alerts for new GitHub releases and commits",
+  "main": "src/api.ts",
+  "scripts": {
+    "setup": "node scripts/setup-config.js",
+    "dev:api": "npm run setup && wrangler dev --config wrangler-api.toml",
+    "dev:poller": "npm run setup && wrangler dev --config wrangler-poller.toml",
+    "deploy:api": "npm run setup && wrangler deploy --config wrangler-api.toml",
+    "deploy:poller": "npm run setup && wrangler deploy --config wrangler-poller.toml",
+    "deploy:api:prod": "npm run setup && wrangler deploy --config wrangler-api.toml --env production",
+    "deploy:poller:prod": "npm run setup && wrangler deploy --config wrangler-poller.toml --env production",
+    "deploy": "npm run deploy:api && npm run deploy:poller",
+    "deploy:prod": "npm run deploy:api:prod && npm run deploy:poller:prod",
+    "db:migrate": "npm run setup && wrangler d1 execute gitping --remote --file=src/schema.sql --config wrangler-api.toml",
+    "db:migrate:local": "npm run setup && wrangler d1 execute gitping --local --file=src/schema.sql --config wrangler-api.toml",
+    "logs:api": "wrangler tail gitping-api --config wrangler-api.toml",
+    "logs:poller": "wrangler tail gitping-poller --config wrangler-poller.toml",
+    "secrets:set": "echo 'Run: wrangler secret put GITHUB_TOKEN --config wrangler-api.toml && wrangler secret put TELEGRAM_BOT_TOKEN --config wrangler-api.toml && wrangler secret put GITHUB_TOKEN --config wrangler-poller.toml && wrangler secret put TELEGRAM_BOT_TOKEN --config wrangler-poller.toml'",
+    "telegram:setup": "node scripts/setup-telegram-webhook.js"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241205.0",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.30.0"
+  },
+  "keywords": [
+    "github",
+    "notifications",
+    "telegram",
+    "releases",
+    "commits"
+  ],
+  "author": "",
+  "license": "MIT"
+}

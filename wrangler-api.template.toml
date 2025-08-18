@@ -1,0 +1,48 @@
+# GitPing API Worker Configuration
+
+name = "gitping-api"
+main = "src/workers/api.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Database
+[[d1_databases]]
+binding = "DB"
+database_name = "gitping"
+database_id = "${D1_DATABASE_ID}"
+
+# KV for shared state
+[[kv_namespaces]]
+binding = "POLL_STATE"
+id = "${KV_NAMESPACE_ID}"
+
+# Environment variables
+[vars]
+PROJECT_NAME = "gitping"
+ENVIRONMENT = "development"
+
+# Production environment
+[env.production]
+name = "gitping-api-prod"
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "gitping"
+database_id = "${D1_DATABASE_ID_PROD}"
+[[env.production.kv_namespaces]]
+binding = "POLL_STATE"
+id = "${KV_NAMESPACE_ID_PROD}"
+[env.production.vars]
+ENVIRONMENT = "production"
+
+# Staging environment  
+[env.staging]
+name = "gitping-api-staging"
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "gitping"
+database_id = "${D1_DATABASE_ID_STAGING}"
+[[env.staging.kv_namespaces]]
+binding = "POLL_STATE"
+id = "${KV_NAMESPACE_ID_STAGING}"
+[env.staging.vars]
+ENVIRONMENT = "staging"
