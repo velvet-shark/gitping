@@ -113,14 +113,13 @@ export default {
           // Generate JWT token
           const token = await auth.createJWT(user.id, sessionId);
 
-          // Redirect to frontend dashboard with auth cookie
+          // Redirect to frontend auth callback with token
           const frontendUrl = env.FRONTEND_URL || 'https://gitping.pages.dev';
           
           return new Response(null, {
             status: 302,
             headers: { 
-              'Location': `${frontendUrl}/dashboard`,
-              'Set-Cookie': auth.createAuthCookie(token),
+              'Location': `${frontendUrl}/auth/callback?token=${encodeURIComponent(token)}`,
               ...corsHeaders 
             }
           });

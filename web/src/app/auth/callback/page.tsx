@@ -12,36 +12,38 @@ function CallbackContent() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      const code = searchParams.get('code')
-      const state = searchParams.get('state')
+      const token = searchParams.get('token')
       const errorParam = searchParams.get('error')
 
       if (errorParam) {
         setStatus('error')
-        setError('GitHub authentication was cancelled or failed')
+        setError(decodeURIComponent(errorParam))
         return
       }
 
-      if (!code) {
+      if (!token) {
         setStatus('error')
-        setError('No authorization code received from GitHub')
+        setError('No authentication token received')
         return
       }
 
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.modelarena.workers.dev'
-        const response = await fetch(`${apiUrl}/auth/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state || '')}`)
-        
-        const data = await response.json()
+        // Store the token in localStorage
+        localStorage.setItem('auth_token', decodeURIComponent(token))
 
-        if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Authentication failed')
+        // Fetch user data with the token to verify it's valid
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.modelarena.workers.dev'
+        const response = await fetch(`${apiUrl}/auth/me`, {
+          headers: { 'Authorization': `Bearer ${decodeURIComponent(token)}` }
+        })
+
+        if (!response.ok) {
+          throw new Error('Invalid token')
         }
 
-        // Store the token in localStorage (in a real app, consider more secure storage)
-        if (data.token) {
-          localStorage.setItem('auth_token', data.token)
-          localStorage.setItem('user', JSON.stringify(data.user))
+        const userData = await response.json()
+        if (userData.success && userData.user) {
+          localStorage.setItem('user', JSON.stringify(userData.user))
         }
 
         setStatus('success')
@@ -54,6 +56,9 @@ function CallbackContent() {
       } catch (err) {
         setStatus('error')
         setError(err instanceof Error ? err.message : 'Authentication failed')
+        // Clear any stored data on error
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('user')
       }
     }
 

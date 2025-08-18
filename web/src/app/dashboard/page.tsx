@@ -32,26 +32,42 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadUserData = async () => {
       try {
+        // Try to load user from localStorage first
+        const savedUser = localStorage.getItem('user')
+        if (savedUser) {
+          setUser(JSON.parse(savedUser))
+        }
+
+        // Check if we have a token
+        const token = localStorage.getItem('auth_token')
+        if (!token) {
+          window.location.href = '/auth/login'
+          return
+        }
+
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.modelarena.workers.dev'
         
-        // Fetch current user data and subscriptions using cookies
+        // Fetch current user data and subscriptions
         const [userResponse, subscriptionsResponse] = await Promise.all([
           fetch(`${apiUrl}/auth/me`, {
-            credentials: 'include'
+            headers: { 'Authorization': `Bearer ${token}` }
           }),
           fetch(`${apiUrl}/subscriptions`, {
-            credentials: 'include'
+            headers: { 'Authorization': `Bearer ${token}` }
           })
         ])
 
         if (!userResponse.ok) {
-          // User not authenticated, redirect to login
+          // Token invalid, clear storage and redirect
+          localStorage.removeItem('auth_token')
+          localStorage.removeItem('user')
           window.location.href = '/auth/login'
           return
         }
 
         const userData = await userResponse.json()
         setUser(userData.user)
+        localStorage.setItem('user', JSON.stringify(userData.user))
 
         if (subscriptionsResponse.ok) {
           const subscriptionsData = await subscriptionsResponse.json()
@@ -70,11 +86,12 @@ export default function DashboardPage() {
 
   const generateConnectionCode = async () => {
     try {
+      const token = localStorage.getItem('auth_token')
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.modelarena.workers.dev'
       
       const response = await fetch(`${apiUrl}/auth/connection-code`, {
         method: 'POST',
-        credentials: 'include'
+        headers: { 'Authorization': `Bearer ${token}` }
       })
 
       if (response.ok) {
@@ -89,17 +106,20 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     try {
+      const token = localStorage.getItem('auth_token')
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.modelarena.workers.dev'
       
       // Call logout endpoint to clear server-side session
       await fetch(`${apiUrl}/auth/logout`, {
         method: 'POST',
-        credentials: 'include'
+        headers: { 'Authorization': `Bearer ${token}` }
       })
     } catch (error) {
       console.error('Logout error:', error)
     } finally {
-      // Redirect to home page regardless of API call result
+      // Clear local storage and redirect
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('user')
       window.location.href = '/'
     }
   }
