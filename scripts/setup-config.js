@@ -94,6 +94,16 @@ function main() {
     process.exit(1);
   }
 
+  // Validate recommended variables for web authentication
+  const recommended = ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'JWT_SECRET', 'FRONTEND_URL'];
+  const missingRecommended = recommended.filter(key => !envVars[key] || envVars[key].startsWith('your_'));
+  
+  if (missingRecommended.length > 0) {
+    console.warn('⚠️  Missing recommended environment variables for web authentication:');
+    missingRecommended.forEach(key => console.warn(`   - ${key}`));
+    console.warn('\nWeb authentication will not work without these. Telegram bot will still work.');
+  }
+
   // Process templates
   const templates = [
     ['wrangler-api.template.toml', 'wrangler-api.toml'],

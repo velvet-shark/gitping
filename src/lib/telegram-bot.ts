@@ -90,6 +90,9 @@ export class TelegramBot {
       case '/status':
         await this.handleStatus(chatId, userId);
         break;
+      case '/connect':
+        await this.handleConnect(chatId, userId, args);
+        break;
       default:
         await this.handleUnknownCommand(chatId, cmd);
     }
@@ -145,6 +148,7 @@ Let's get started\\! 🚀`;
 
 *Account:*
 /status \\- Your account info
+/connect \\<code\\> \\- Link to web account
 /help \\- Show this message
 
 *Filters Available:*
@@ -459,6 +463,55 @@ ${subscriptions.length > 0
           const repo = data.substring(10).replace('_', '/');
           await this.handleSubscribe(chatId, userId, [repo]);
         }
+    }
+  }
+
+  private async handleConnect(chatId: string, userId: string, args: string[]): Promise<void> {
+    if (args.length !== 1) {
+      await this.telegram.sendMessage(
+        chatId, 
+        '❌ *Invalid format*\n\nUsage: `/connect <6-digit-code>`\n\nGet your connection code from the GitPing web dashboard.',
+        { parse_mode: 'MarkdownV2' }
+      );
+      return;
+    }
+
+    const code = args[0].trim();
+    
+    // Validate code format (6 digits)
+    if (!/^\d{6}$/.test(code)) {
+      await this.telegram.sendMessage(
+        chatId, 
+        '❌ *Invalid code format*\n\nPlease enter a 6-digit connection code from the GitPing web dashboard.',
+        { parse_mode: 'MarkdownV2' }
+      );
+      return;
+    }
+
+    try {
+      // Attempt to use the connection code
+      const success = await this.db.useConnectionCode(code, chatId);
+      
+      if (success) {
+        await this.telegram.sendMessage(
+          chatId, 
+          '✅ *Successfully linked\\!*\n\nYour Telegram account is now connected to your GitPing web account\\. You can manage all your subscriptions from both the web dashboard and this bot\\.',
+          { parse_mode: 'MarkdownV2' }
+        );
+      } else {
+        await this.telegram.sendMessage(
+          chatId, 
+          '❌ *Invalid or expired code*\n\nThe connection code is either invalid, expired, or already used\\. Please generate a new code from the GitPing web dashboard\\.',
+          { parse_mode: 'MarkdownV2' }
+        );
+      }
+    } catch (error) {
+      console.error('Error linking Telegram account:', error);
+      await this.telegram.sendMessage(
+        chatId, 
+        '❌ *Connection failed*\n\nSorry, there was an error linking your account\\. Please try again or contact support\\.',
+        { parse_mode: 'MarkdownV2' }
+      );
     }
   }
 }

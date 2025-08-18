@@ -1,4 +1,4 @@
-import type { Env, Repo, Subscription, Event, User } from './types';
+import type { Env, Repo, Subscription, Event, User, Session, ConnectionCode } from './types';
 
 export class DatabaseService {
   constructor(private env: Env) {}
@@ -15,6 +15,39 @@ export class DatabaseService {
     const result = await this.env.DB
       .prepare('SELECT * FROM users WHERE id = ?')
       .bind(id)
+      .first();
+    
+    return result as User | null;
+  }
+
+  // GitHub OAuth user management
+  async createOrUpdateGitHubUser(githubUser: any, email?: string): Promise<User> {
+    const userId = `github_${githubUser.id}`;
+    
+    const result = await this.env.DB
+      .prepare(`
+        INSERT OR REPLACE INTO users (
+          id, github_id, github_username, name, email, avatar_url, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM users WHERE id = ?), strftime('%s','now')))
+      `)
+      .bind(
+        userId,
+        githubUser.id.toString(),
+        githubUser.login,
+        githubUser.name || githubUser.login,
+        email || githubUser.email,
+        githubUser.avatar_url,
+        userId
+      )
+      .run();
+
+    return await this.getUser(userId) as User;
+  }
+
+  async getUserByGitHubId(githubId: string): Promise<User | null> {
+    const result = await this.env.DB
+      .prepare('SELECT * FROM users WHERE github_id = ?')
+      .bind(githubId)
       .first();
     
     return result as User | null;
@@ -267,5 +300,108 @@ export class DatabaseService {
       .all();
     
     return result.results || [];
+  }
+
+  // Session management
+  async createSession(sessionId: string, userId: string, expiresAt: number, userAgent?: string, ipAddress?: string): Promise<void> {
+    await this.env.DB
+      .prepare(`
+        INSERT INTO sessions (id, user_id, expires_at, user_agent, ip_address)
+        VALUES (?, ?, ?, ?, ?)
+      `)
+      .bind(sessionId, userId, expiresAt, userAgent || null, ipAddress || null)
+      .run();
+  }
+
+  async getSession(sessionId: string): Promise<Session | null> {
+    const result = await this.env.DB
+      .prepare('SELECT * FROM sessions WHERE id = ? AND expires_at > ?')
+      .bind(sessionId, Math.floor(Date.now() / 1000))
+      .first();
+    
+    return result as Session | null;
+  }
+
+  async updateSessionLastUsed(sessionId: string): Promise<void> {
+    await this.env.DB
+      .prepare('UPDATE sessions SET last_used_at = ? WHERE id = ?')
+      .bind(Math.floor(Date.now() / 1000), sessionId)
+      .run();
+  }
+
+  async deleteSession(sessionId: string): Promise<void> {
+    await this.env.DB
+      .prepare('DELETE FROM sessions WHERE id = ?')
+      .bind(sessionId)
+      .run();
+  }
+
+  async deleteUserSessions(userId: string): Promise<void> {
+    await this.env.DB
+      .prepare('DELETE FROM sessions WHERE user_id = ?')
+      .bind(userId)
+      .run();
+  }
+
+  async cleanupExpiredSessions(): Promise<void> {
+    const now = Math.floor(Date.now() / 1000);
+    await this.env.DB
+      .prepare('DELETE FROM sessions WHERE expires_at < ?')
+      .bind(now)
+      .run();
+  }
+
+  // Connection codes for Telegram linking
+  async createConnectionCode(code: string, userId: string, expiresAt: number): Promise<void> {
+    await this.env.DB
+      .prepare(`
+        INSERT OR REPLACE INTO connection_codes (code, user_id, expires_at)
+        VALUES (?, ?, ?)
+      `)
+      .bind(code, userId, expiresAt)
+      .run();
+  }
+
+  async getConnectionCode(code: string): Promise<ConnectionCode | null> {
+    const result = await this.env.DB
+      .prepare('SELECT * FROM connection_codes WHERE code = ? AND expires_at > ? AND used_at IS NULL')
+      .bind(code, Math.floor(Date.now() / 1000))
+      .first();
+    
+    return result as ConnectionCode | null;
+  }
+
+  async useConnectionCode(code: string, tgChatId: string): Promise<boolean> {
+    const now = Math.floor(Date.now() / 1000);
+    
+    // First check if code exists and is valid
+    const connectionCode = await this.getConnectionCode(code);
+    if (!connectionCode) return false;
+
+    // Use the code and link Telegram
+    await this.env.DB
+      .prepare(`
+        UPDATE connection_codes 
+        SET used_at = ?, tg_chat_id = ? 
+        WHERE code = ?
+      `)
+      .bind(now, tgChatId, code)
+      .run();
+
+    // Update user with Telegram chat ID
+    await this.env.DB
+      .prepare('UPDATE users SET tg_chat_id = ? WHERE id = ?')
+      .bind(tgChatId, connectionCode.user_id)
+      .run();
+
+    return true;
+  }
+
+  async cleanupExpiredConnectionCodes(): Promise<void> {
+    const now = Math.floor(Date.now() / 1000);
+    await this.env.DB
+      .prepare('DELETE FROM connection_codes WHERE expires_at < ?')
+      .bind(now)
+      .run();
   }
 }

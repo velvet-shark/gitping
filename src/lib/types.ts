@@ -6,6 +6,10 @@ export interface Env {
   EVENTS: Queue;
   TELEGRAM_BOT_TOKEN: string;
   GITHUB_TOKEN: string;
+  GITHUB_CLIENT_ID: string;
+  GITHUB_CLIENT_SECRET: string;
+  JWT_SECRET: string;
+  FRONTEND_URL: string;
 }
 
 // Database Models
@@ -13,6 +17,11 @@ export interface User {
   id: string;
   created_at: number;
   tg_chat_id?: string;
+  email?: string;
+  github_id?: string;
+  github_username?: string;
+  name?: string;
+  avatar_url?: string;
 }
 
 export interface Repo {
@@ -56,6 +65,25 @@ export interface Notification {
   last_error?: string;
   last_error_at?: number;
   sent_at?: number;
+}
+
+export interface Session {
+  id: string;
+  user_id: string;
+  expires_at: number;
+  created_at: number;
+  last_used_at: number;
+  user_agent?: string;
+  ip_address?: string;
+}
+
+export interface ConnectionCode {
+  code: string;
+  user_id: string;
+  expires_at: number;
+  created_at: number;
+  used_at?: number;
+  tg_chat_id?: string;
 }
 
 // Filter Types
@@ -105,6 +133,29 @@ export interface CreateSubscriptionRequest {
 
 export interface ConnectTelegramRequest {
   user_id: string;
+  chat_id: string;
+}
+
+// Authentication API Types
+export interface GitHubOAuthCallbackRequest {
+  code: string;
+  state?: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  user?: User;
+  token?: string;
+  error?: string;
+}
+
+export interface GenerateConnectionCodeResponse {
+  code: string;
+  expires_at: number;
+}
+
+export interface LinkTelegramRequest {
+  code: string;
   chat_id: string;
 }
 

@@ -1,10 +1,15 @@
 -- GitPing Database Schema
 
--- Users can be anonymous at first; expand with auth later
+-- Users: support both anonymous (Telegram-only) and authenticated (web) users
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,                 -- uuid
   created_at INTEGER DEFAULT (strftime('%s','now')),
-  tg_chat_id TEXT                      -- for Telegram delivery
+  tg_chat_id TEXT,                     -- for Telegram delivery (optional)
+  email TEXT,                          -- from GitHub OAuth (optional)
+  github_id TEXT UNIQUE,               -- GitHub user ID for OAuth
+  github_username TEXT,                -- GitHub username
+  name TEXT,                           -- Display name from GitHub
+  avatar_url TEXT                      -- Profile picture from GitHub
 );
 
 -- Repository tracking
@@ -61,6 +66,29 @@ CREATE TABLE IF NOT EXISTS notifications (
   FOREIGN KEY (subscription_id) REFERENCES subscriptions(id)
 );
 
+-- Web authentication sessions
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,                  -- JWT token ID or session ID
+  user_id TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,          -- epoch seconds
+  created_at INTEGER DEFAULT (strftime('%s','now')),
+  last_used_at INTEGER DEFAULT (strftime('%s','now')),
+  user_agent TEXT,                      -- Optional: track user agent
+  ip_address TEXT,                      -- Optional: track IP for security
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Connection codes for linking Telegram to web accounts
+CREATE TABLE IF NOT EXISTS connection_codes (
+  code TEXT PRIMARY KEY,               -- 6-digit random code
+  user_id TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,         -- expire in 10 minutes
+  created_at INTEGER DEFAULT (strftime('%s','now')),
+  used_at INTEGER,                     -- when the code was used
+  tg_chat_id TEXT,                     -- filled when bot uses the code
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_subs_user_repo ON subscriptions(user_id, repo_id);
 CREATE INDEX IF NOT EXISTS idx_subs_repo_kind ON subscriptions(repo_id, kind);
@@ -69,3 +97,9 @@ CREATE INDEX IF NOT EXISTS idx_events_inserted ON events(inserted_at);
 CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications(status, attempts);
 CREATE INDEX IF NOT EXISTS idx_notifications_event ON notifications(event_id);
 CREATE INDEX IF NOT EXISTS idx_repos_polling ON repos(last_polled_at, consecutive_errors);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_users_github_id ON users(github_id);
+CREATE INDEX IF NOT EXISTS idx_users_github_username ON users(github_username);
+CREATE INDEX IF NOT EXISTS idx_connection_codes_expires ON connection_codes(expires_at);
+CREATE INDEX IF NOT EXISTS idx_connection_codes_user ON connection_codes(user_id);

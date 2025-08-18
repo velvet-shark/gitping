@@ -17,7 +17,7 @@
     "db:migrate:local": "npm run setup && wrangler d1 execute gitping --local --file=src/schema.sql --config wrangler-api.toml",
     "logs:api": "wrangler tail gitping-api --config wrangler-api.toml",
     "logs:poller": "wrangler tail gitping-poller --config wrangler-poller.toml",
-    "secrets:set": "echo 'Run: wrangler secret put GITHUB_TOKEN --config wrangler-api.toml && wrangler secret put TELEGRAM_BOT_TOKEN --config wrangler-api.toml && wrangler secret put GITHUB_TOKEN --config wrangler-poller.toml && wrangler secret put TELEGRAM_BOT_TOKEN --config wrangler-poller.toml'",
+    "secrets:set": "echo 'Run: wrangler secret put GITHUB_TOKEN --config wrangler-api.toml && wrangler secret put TELEGRAM_BOT_TOKEN --config wrangler-api.toml && wrangler secret put GITHUB_CLIENT_ID --config wrangler-api.toml && wrangler secret put GITHUB_CLIENT_SECRET --config wrangler-api.toml && wrangler secret put JWT_SECRET --config wrangler-api.toml && wrangler secret put FRONTEND_URL --config wrangler-api.toml && wrangler secret put GITHUB_TOKEN --config wrangler-poller.toml && wrangler secret put TELEGRAM_BOT_TOKEN --config wrangler-poller.toml'",
     "telegram:setup": "node scripts/setup-telegram-webhook.js"
   },
   "devDependencies": {

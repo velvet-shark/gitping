@@ -8,6 +8,10 @@
 wrangler-api.toml
 wrangler-poller.toml
 
+# Web
+web/.next/
+web/out/
+
 # Wrangler
 .wrangler/
 node_modules/
