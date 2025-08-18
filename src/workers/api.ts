@@ -228,6 +228,7 @@ export default {
         const code = auth.generateConnectionCode();
         const expiresAt = Math.floor(Date.now() / 1000) + (10 * 60);
         
+        console.log(`Creating connection code ${code} for user ${payload.sub}`);
         await db.createConnectionCode(code, payload.sub, expiresAt);
 
         const response: GenerateConnectionCodeResponse = { code, expires_at: expiresAt };

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Bell, Plus, Settings, LogOut, MessageSquare, Copy } from 'lucide-react'
+import { Bell, Plus, Settings, LogOut, MessageSquare, Copy, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import AddRepositoryModal from '../../components/AddRepositoryModal'
 
@@ -148,6 +148,33 @@ export default function DashboardPage() {
   const handleAddRepoSuccess = () => {
     // Refresh subscriptions after adding a new repository
     refreshUserData()
+  }
+
+  const handleDeleteSubscription = async (subscriptionId: number, repoName: string) => {
+    if (!confirm(`Are you sure you want to unsubscribe from ${repoName}?`)) {
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('auth_token')
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.modelarena.workers.dev'
+
+      const response = await fetch(`${apiUrl}/subscriptions/${subscriptionId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete subscription')
+      }
+
+      // Refresh subscriptions after deletion
+      refreshUserData()
+    } catch (error) {
+      console.error('Failed to delete subscription:', error)
+      alert('Failed to delete subscription. Please try again.')
+    }
   }
 
   if (loading) {
@@ -340,8 +367,12 @@ export default function DashboardPage() {
                       </p>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <button className="text-gray-400 hover:text-gray-600">
-                        <Settings className="h-4 w-4" />
+                      <button
+                        onClick={() => handleDeleteSubscription(sub.id, sub.repo)}
+                        className="text-red-400 hover:text-red-600"
+                        title="Delete subscription"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>

@@ -5,8 +5,9 @@ export class DatabaseService {
 
   // Users
   async createUser(id: string, tgChatId?: string): Promise<void> {
+    // Only create user if they don't exist (don't overwrite existing users)
     await this.env.DB
-      .prepare('INSERT OR REPLACE INTO users (id, tg_chat_id) VALUES (?, ?)')
+      .prepare('INSERT OR IGNORE INTO users (id, tg_chat_id) VALUES (?, ?)')
       .bind(id, tgChatId || null)
       .run();
   }
@@ -376,7 +377,12 @@ export class DatabaseService {
     
     // First check if code exists and is valid
     const connectionCode = await this.getConnectionCode(code);
-    if (!connectionCode) return false;
+    if (!connectionCode) {
+      console.log(`Connection code ${code} not found or expired`);
+      return false;
+    }
+
+    console.log(`Using connection code ${code} for user ${connectionCode.user_id}, linking to Telegram chat ${tgChatId}`);
 
     // Use the code and link Telegram
     await this.env.DB
@@ -389,10 +395,12 @@ export class DatabaseService {
       .run();
 
     // Update user with Telegram chat ID
-    await this.env.DB
+    const updateResult = await this.env.DB
       .prepare('UPDATE users SET tg_chat_id = ? WHERE id = ?')
       .bind(tgChatId, connectionCode.user_id)
       .run();
+
+    console.log(`Updated user ${connectionCode.user_id} with Telegram chat ID ${tgChatId}. Changes: ${updateResult.changes}`);
 
     return true;
   }
