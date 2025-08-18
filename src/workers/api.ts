@@ -12,10 +12,12 @@ export default {
 
     try {
       // CORS headers for web clients
+      const origin = request.headers.get('Origin') || '*';
       const corsHeaders = {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': origin.includes('gitping.pages.dev') || origin.includes('localhost') ? origin : '*',
         'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Credentials': 'true',
       };
 
       // Helper function to authenticate user (supports both JWT and direct user_id)
