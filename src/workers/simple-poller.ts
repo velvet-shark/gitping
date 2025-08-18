@@ -103,9 +103,25 @@ async function pollReleasesAndNotify(
     
     // Find new releases
     const currentLastSeenId = currentState?.lastSeenId;
-    const newReleases = currentLastSeenId 
-      ? releases.filter(r => r.id > parseInt(currentLastSeenId))
-      : [releases[0]]; // If no previous state, take only the latest
+    let newReleases: any[];
+    
+    if (currentLastSeenId) {
+      // Normal case: filter by ID
+      newReleases = releases.filter(r => r.id > parseInt(currentLastSeenId));
+    } else {
+      // First time polling: only notify about releases published after oldest subscription
+      const subscriptions = await db.getSubscriptionsForRepo(repo.id, 'release');
+      if (subscriptions.length > 0) {
+        const oldestSubscriptionTime = Math.min(...subscriptions.map(s => s.created_at));
+        newReleases = releases.filter(r => {
+          const releaseTime = Math.floor(Date.parse(r.published_at) / 1000);
+          return releaseTime >= oldestSubscriptionTime;
+        });
+      } else {
+        // No subscriptions somehow, don't notify about anything
+        newReleases = [];
+      }
+    }
     
     console.log(`Found ${newReleases.length} new releases for ${repo.owner}/${repo.name}`);
     
