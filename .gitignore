@@ -1,0 +1,16 @@
+# Environment files
+.env
+.env.local
+.env.production
+.env.staging
+
+# Generated configuration files (created from templates)
+wrangler-api.toml
+wrangler-poller.toml
+
+# Wrangler
+.wrangler/
+node_modules/
+
+# Logs
+*.log
