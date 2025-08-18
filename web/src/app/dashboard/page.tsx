@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Bell, Plus, Settings, LogOut, MessageSquare, Copy } from 'lucide-react'
 import Link from 'next/link'
+import AddRepositoryModal from '../../components/AddRepositoryModal'
 
 interface User {
   id: string
@@ -28,59 +29,71 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [connectionCode, setConnectionCode] = useState('')
   const [showConnectionCode, setShowConnectionCode] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [showAddRepo, setShowAddRepo] = useState(false)
 
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
+  const loadUserData = async (skipCache = false) => {
+    try {
+      if (!skipCache) {
         // Try to load user from localStorage first
         const savedUser = localStorage.getItem('user')
         if (savedUser) {
           setUser(JSON.parse(savedUser))
         }
-
-        // Check if we have a token
-        const token = localStorage.getItem('auth_token')
-        if (!token) {
-          window.location.href = '/auth/login'
-          return
-        }
-
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.modelarena.workers.dev'
-        
-        // Fetch current user data and subscriptions
-        const [userResponse, subscriptionsResponse] = await Promise.all([
-          fetch(`${apiUrl}/auth/me`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }),
-          fetch(`${apiUrl}/subscriptions`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
-        ])
-
-        if (!userResponse.ok) {
-          // Token invalid, clear storage and redirect
-          localStorage.removeItem('auth_token')
-          localStorage.removeItem('user')
-          window.location.href = '/auth/login'
-          return
-        }
-
-        const userData = await userResponse.json()
-        setUser(userData.user)
-        localStorage.setItem('user', JSON.stringify(userData.user))
-
-        if (subscriptionsResponse.ok) {
-          const subscriptionsData = await subscriptionsResponse.json()
-          setSubscriptions(subscriptionsData)
-        }
-
-      } catch (error) {
-        console.error('Failed to load user data:', error)
-      } finally {
-        setLoading(false)
       }
-    }
 
+      // Check if we have a token
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        window.location.href = '/auth/login'
+        return
+      }
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.modelarena.workers.dev'
+      
+      // Fetch current user data and subscriptions
+      const [userResponse, subscriptionsResponse] = await Promise.all([
+        fetch(`${apiUrl}/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${apiUrl}/subscriptions`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ])
+
+      if (!userResponse.ok) {
+        // Token invalid, clear storage and redirect
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('user')
+        window.location.href = '/auth/login'
+        return
+      }
+
+      const userData = await userResponse.json()
+      setUser(userData.user)
+      localStorage.setItem('user', JSON.stringify(userData.user))
+
+      if (subscriptionsResponse.ok) {
+        const subscriptionsData = await subscriptionsResponse.json()
+        setSubscriptions(subscriptionsData)
+      } else {
+        console.error('Failed to load subscriptions:', await subscriptionsResponse.text())
+      }
+
+    } catch (error) {
+      console.error('Failed to load user data:', error)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  const refreshUserData = async () => {
+    setRefreshing(true)
+    await loadUserData(true) // Skip cache to get fresh data
+  }
+
+  useEffect(() => {
     loadUserData()
   }, [])
 
@@ -128,6 +141,15 @@ export default function DashboardPage() {
     navigator.clipboard.writeText(connectionCode)
   }
 
+  const handleAddRepository = () => {
+    setShowAddRepo(true)
+  }
+
+  const handleAddRepoSuccess = () => {
+    // Refresh subscriptions after adding a new repository
+    refreshUserData()
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -172,12 +194,27 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              {user.tg_chat_id ? (
+                <div className="flex items-center space-x-2 bg-green-100 text-green-800 px-4 py-2 rounded-lg">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Telegram Connected</span>
+                </div>
+              ) : (
+                <button
+                  onClick={generateConnectionCode}
+                  className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Connect Telegram</span>
+                </button>
+              )}
               <button
-                onClick={generateConnectionCode}
-                className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                onClick={refreshUserData}
+                disabled={refreshing}
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 disabled:opacity-50"
               >
-                <MessageSquare className="h-4 w-4" />
-                <span>Connect Telegram</span>
+                <Settings className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
               </button>
               <button
                 onClick={handleLogout}
@@ -242,9 +279,9 @@ export default function DashboardPage() {
           </div>
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center">
-              <MessageSquare className="h-8 w-8 text-green-600" />
+              <MessageSquare className={`h-8 w-8 ${user.tg_chat_id ? 'text-green-600' : 'text-gray-400'}`} />
               <div className="ml-4">
-                <p className="text-2xl font-bold text-gray-900">
+                <p className={`text-2xl font-bold ${user.tg_chat_id ? 'text-green-600' : 'text-gray-400'}`}>
                   {user.tg_chat_id ? '✓' : '✗'}
                 </p>
                 <p className="text-gray-600">Telegram Connected</p>
@@ -267,7 +304,10 @@ export default function DashboardPage() {
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold text-gray-900">Your Subscriptions</h2>
-              <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+              <button 
+                onClick={handleAddRepository}
+                className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
                 <Plus className="h-4 w-4" />
                 <span>Add Repository</span>
               </button>
@@ -282,7 +322,10 @@ export default function DashboardPage() {
                 <p className="text-gray-600 mb-6">
                   Start by subscribing to repositories you want to track for new releases.
                 </p>
-                <button className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                <button 
+                  onClick={handleAddRepository}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                >
                   Subscribe to Your First Repository
                 </button>
               </div>
@@ -308,6 +351,13 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      {/* Add Repository Modal */}
+      <AddRepositoryModal
+        isOpen={showAddRepo}
+        onClose={() => setShowAddRepo(false)}
+        onSuccess={handleAddRepoSuccess}
+      />
     </div>
   )
 }
