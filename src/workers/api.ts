@@ -65,10 +65,15 @@ export default {
         const state = url.searchParams.get('state');
 
         if (!code) {
-          const response: AuthResponse = { success: false, error: 'No authorization code provided' };
-          return new Response(JSON.stringify(response), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          // Redirect to frontend login with error
+          const frontendUrl = this.env.FRONTEND_URL || 'https://gitping.pages.dev';
+          
+          return new Response(null, {
+            status: 302,
+            headers: { 
+              'Location': `${frontendUrl}/auth/login?error=${encodeURIComponent('No authorization code provided')}`,
+              ...corsHeaders 
+            }
           });
         }
 
@@ -106,24 +111,29 @@ export default {
           // Generate JWT token
           const token = await auth.createJWT(user.id, sessionId);
 
-          const response: AuthResponse = { success: true, user, token };
+          // Redirect to frontend dashboard with auth cookie
+          const frontendUrl = this.env.FRONTEND_URL || 'https://gitping.pages.dev';
           
-          return new Response(JSON.stringify(response), {
+          return new Response(null, {
+            status: 302,
             headers: { 
-              'Content-Type': 'application/json',
+              'Location': `${frontendUrl}/dashboard`,
               'Set-Cookie': auth.createAuthCookie(token),
               ...corsHeaders 
             }
           });
 
         } catch (error) {
-          const response: AuthResponse = { 
-            success: false, 
-            error: error instanceof Error ? error.message : 'Authentication failed' 
-          };
-          return new Response(JSON.stringify(response), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          // Redirect to frontend login with error message
+          const frontendUrl = this.env.FRONTEND_URL || 'https://gitping.pages.dev';
+          const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+          
+          return new Response(null, {
+            status: 302,
+            headers: { 
+              'Location': `${frontendUrl}/auth/login?error=${encodeURIComponent(errorMessage)}`,
+              ...corsHeaders 
+            }
           });
         }
       }
