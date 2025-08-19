@@ -89,6 +89,29 @@ CREATE TABLE IF NOT EXISTS connection_codes (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Verified channels for web users (Telegram, Email, Slack, etc.)
+CREATE TABLE IF NOT EXISTS verified_channels (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  channel_type TEXT NOT NULL DEFAULT 'telegram',  -- 'telegram', 'email', 'slack', etc.
+  channel_identifier TEXT NOT NULL,               -- chat_id, email address, webhook URL
+  display_name TEXT,                               -- User-friendly name
+  verified_at INTEGER NOT NULL,                    -- when the channel was verified
+  created_at INTEGER DEFAULT (strftime('%s','now')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE(user_id, channel_type, channel_identifier)
+);
+
+-- Link subscriptions to verified channels (many-to-many)
+CREATE TABLE IF NOT EXISTS subscription_channels (
+  subscription_id INTEGER NOT NULL,
+  channel_id INTEGER NOT NULL,
+  created_at INTEGER DEFAULT (strftime('%s','now')),
+  PRIMARY KEY (subscription_id, channel_id),
+  FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE,
+  FOREIGN KEY (channel_id) REFERENCES verified_channels(id) ON DELETE CASCADE
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_subs_user_repo ON subscriptions(user_id, repo_id);
 CREATE INDEX IF NOT EXISTS idx_subs_repo_kind ON subscriptions(repo_id, kind);
@@ -103,3 +126,7 @@ CREATE INDEX IF NOT EXISTS idx_users_github_id ON users(github_id);
 CREATE INDEX IF NOT EXISTS idx_users_github_username ON users(github_username);
 CREATE INDEX IF NOT EXISTS idx_connection_codes_expires ON connection_codes(expires_at);
 CREATE INDEX IF NOT EXISTS idx_connection_codes_user ON connection_codes(user_id);
+CREATE INDEX IF NOT EXISTS idx_verified_channels_user ON verified_channels(user_id);
+CREATE INDEX IF NOT EXISTS idx_verified_channels_type ON verified_channels(channel_type);
+CREATE INDEX IF NOT EXISTS idx_subscription_channels_sub ON subscription_channels(subscription_id);
+CREATE INDEX IF NOT EXISTS idx_subscription_channels_channel ON subscription_channels(channel_id);

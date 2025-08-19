@@ -1,4 +1,4 @@
-import type { Env, Repo, Subscription, Event, User, Session, ConnectionCode } from './types';
+import type { Env, Repo, Subscription, Event, User, Session, ConnectionCode, VerifiedChannel } from './types';
 
 export class DatabaseService {
   constructor(private env: Env) {}
@@ -394,13 +394,15 @@ export class DatabaseService {
       .bind(now, tgChatId, code)
       .run();
 
-    // Update user with Telegram chat ID
-    const updateResult = await this.env.DB
-      .prepare('UPDATE users SET tg_chat_id = ? WHERE id = ?')
-      .bind(tgChatId, connectionCode.user_id)
-      .run();
+    // Create verified channel instead of updating user directly
+    await this.createVerifiedChannel(
+      connectionCode.user_id,
+      'telegram',
+      tgChatId,
+      'Telegram'
+    );
 
-    console.log(`Updated user ${connectionCode.user_id} with Telegram chat ID ${tgChatId}. Changes: ${updateResult.changes}`);
+    console.log(`Created verified Telegram channel for user ${connectionCode.user_id} with chat ID ${tgChatId}`);
 
     return true;
   }
@@ -410,6 +412,92 @@ export class DatabaseService {
     await this.env.DB
       .prepare('DELETE FROM connection_codes WHERE expires_at < ?')
       .bind(now)
+      .run();
+  }
+
+  // Verified Channels
+  async createVerifiedChannel(
+    userId: string, 
+    channelType: string, 
+    channelIdentifier: string, 
+    displayName?: string
+  ): Promise<number> {
+    const now = Math.floor(Date.now() / 1000);
+    
+    const result = await this.env.DB
+      .prepare(`
+        INSERT OR REPLACE INTO verified_channels 
+        (user_id, channel_type, channel_identifier, display_name, verified_at)
+        VALUES (?, ?, ?, ?, ?)
+      `)
+      .bind(userId, channelType, channelIdentifier, displayName || null, now)
+      .run();
+
+    return result.meta.last_row_id as number;
+  }
+
+  async getUserVerifiedChannels(userId: string): Promise<VerifiedChannel[]> {
+    const result = await this.env.DB
+      .prepare('SELECT * FROM verified_channels WHERE user_id = ? ORDER BY created_at ASC')
+      .bind(userId)
+      .all();
+    
+    return result.results as VerifiedChannel[] || [];
+  }
+
+  async getVerifiedChannel(channelId: number): Promise<VerifiedChannel | null> {
+    const result = await this.env.DB
+      .prepare('SELECT * FROM verified_channels WHERE id = ?')
+      .bind(channelId)
+      .first();
+    
+    return result as VerifiedChannel | null;
+  }
+
+  async deleteVerifiedChannel(channelId: number, userId: string): Promise<boolean> {
+    const result = await this.env.DB
+      .prepare('DELETE FROM verified_channels WHERE id = ? AND user_id = ?')
+      .bind(channelId, userId)
+      .run();
+    
+    return result.changes > 0;
+  }
+
+  // Subscription Channels (many-to-many relationship)
+  async createSubscriptionChannels(subscriptionId: number, channelIds: number[]): Promise<void> {
+    if (channelIds.length === 0) return;
+
+    const values = channelIds.map((channelId) => `(${subscriptionId}, ${channelId})`).join(', ');
+    await this.env.DB
+      .prepare(`INSERT OR IGNORE INTO subscription_channels (subscription_id, channel_id) VALUES ${values}`)
+      .run();
+  }
+
+  async getSubscriptionChannels(subscriptionId: number): Promise<VerifiedChannel[]> {
+    const result = await this.env.DB
+      .prepare(`
+        SELECT vc.* FROM verified_channels vc
+        JOIN subscription_channels sc ON vc.id = sc.channel_id
+        WHERE sc.subscription_id = ?
+        ORDER BY vc.created_at ASC
+      `)
+      .bind(subscriptionId)
+      .all();
+    
+    return result.results as VerifiedChannel[] || [];
+  }
+
+  async deleteSubscriptionChannels(subscriptionId: number): Promise<void> {
+    await this.env.DB
+      .prepare('DELETE FROM subscription_channels WHERE subscription_id = ?')
+      .bind(subscriptionId)
+      .run();
+  }
+
+  async removeChannelFromSubscriptions(channelId: number): Promise<void> {
+    await this.env.DB
+      .prepare('DELETE FROM subscription_channels WHERE channel_id = ?')
+      .bind(channelId)
       .run();
   }
 }

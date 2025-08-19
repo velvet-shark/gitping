@@ -1,22 +1,55 @@
 'use client'
 
-import { useState } from 'react'
-import { X, Plus, Github } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, Plus, Github, MessageSquare } from 'lucide-react'
+
+interface VerifiedChannel {
+  id: number
+  user_id: string
+  channel_type: string
+  channel_identifier: string
+  display_name?: string
+  verified_at: number
+  created_at: number
+}
 
 interface AddRepositoryModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess: (newSubscription?: any) => void
+  channels: VerifiedChannel[]
 }
 
-export default function AddRepositoryModal({ isOpen, onClose, onSuccess }: AddRepositoryModalProps) {
+export default function AddRepositoryModal({ isOpen, onClose, onSuccess, channels }: AddRepositoryModalProps) {
   const [repoUrl, setRepoUrl] = useState('')
+  const [selectedChannels, setSelectedChannels] = useState<number[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Initialize selected channels when modal opens
+  useEffect(() => {
+    if (isOpen && channels.length > 0) {
+      // Auto-select all channels by default
+      setSelectedChannels(channels.map(ch => ch.id))
+    }
+  }, [isOpen, channels])
+
+  const handleChannelToggle = (channelId: number) => {
+    setSelectedChannels(prev => 
+      prev.includes(channelId) 
+        ? prev.filter(id => id !== channelId)
+        : [...prev, channelId]
+    )
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!repoUrl.trim()) return
+    
+    if (selectedChannels.length === 0) {
+      setError('Please select at least one notification channel')
+      return
+    }
 
     setLoading(true)
     setError('')
@@ -64,7 +97,7 @@ export default function AddRepositoryModal({ isOpen, onClose, onSuccess }: AddRe
             tags: [],
             prerelease: true
           },
-          channels: ['telegram']
+          channel_ids: selectedChannels
         })
       })
 
@@ -75,8 +108,9 @@ export default function AddRepositoryModal({ isOpen, onClose, onSuccess }: AddRe
 
       const result = await response.json()
 
-      // Success
+      // Success - reset form
       setRepoUrl('')
+      setSelectedChannels([])
       onSuccess(result)
       onClose()
 
@@ -121,6 +155,43 @@ export default function AddRepositoryModal({ isOpen, onClose, onSuccess }: AddRe
             </div>
           </div>
 
+          {/* Channel Selection */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Notification Channels
+            </label>
+            {channels.length === 0 ? (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  No channels configured. Please add a channel first before subscribing to repositories.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {channels.map((channel) => (
+                  <label key={channel.id} className="flex items-center space-x-3 p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedChannels.includes(channel.id)}
+                      onChange={() => handleChannelToggle(channel.id)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      disabled={loading}
+                    />
+                    <MessageSquare className="h-4 w-4 text-green-600 flex-shrink-0" />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-gray-900">
+                        {channel.display_name || 'Telegram'}
+                      </span>
+                      <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {channel.channel_type}
+                      </span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-600">{error}</p>
@@ -131,7 +202,7 @@ export default function AddRepositoryModal({ isOpen, onClose, onSuccess }: AddRe
             <p className="font-medium mb-2">Notification settings:</p>
             <ul className="space-y-1">
               <li>• All releases (including pre-releases)</li>
-              <li>• Sent via Telegram</li>
+              <li>• Sent to selected channels</li>
               <li>• Real-time notifications</li>
             </ul>
           </div>
@@ -147,7 +218,7 @@ export default function AddRepositoryModal({ isOpen, onClose, onSuccess }: AddRe
             </button>
             <button
               type="submit"
-              disabled={loading || !repoUrl.trim()}
+              disabled={loading || !repoUrl.trim() || channels.length === 0 || selectedChannels.length === 0}
               className="flex-1 flex items-center justify-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (

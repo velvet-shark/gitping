@@ -91,6 +91,7 @@ export class TelegramBot {
         await this.handleStatus(chatId, userId);
         break;
       case '/connect':
+      case '/verify':
         await this.handleConnect(chatId, userId, args);
         break;
       default:
@@ -107,6 +108,7 @@ I'll notify you instantly when your favorite GitHub repositories release new ver
 /subscribe \\- Subscribe to a repository
 /list \\- View your subscriptions  
 /unsubscribe \\- Remove a subscription
+/verify \\- Link to your GitPing web account
 /status \\- Check your account status
 /help \\- Show this help message
 
@@ -148,7 +150,7 @@ Let's get started\\! 🚀`;
 
 *Account:*
 /status \\- Your account info
-/connect \\<code\\> \\- Link to web account
+/verify \\<code\\> \\- Link to web account
 /help \\- Show this message
 
 *Filters Available:*
@@ -470,7 +472,7 @@ ${subscriptions.length > 0
     if (args.length !== 1) {
       await this.telegram.sendMessage(
         chatId, 
-        '❌ *Invalid format*\n\nUsage: `/connect <6-digit-code>`\n\nGet your connection code from the GitPing web dashboard.',
+        '❌ *Invalid format*\n\nUsage: `/verify <6-digit-code>`\n\nGet your verification code from the GitPing web dashboard.',
         { parse_mode: 'MarkdownV2' }
       );
       return;
@@ -482,7 +484,7 @@ ${subscriptions.length > 0
     if (!/^\d{6}$/.test(code)) {
       await this.telegram.sendMessage(
         chatId, 
-        '❌ *Invalid code format*\n\nPlease enter a 6-digit connection code from the GitPing web dashboard.',
+        '❌ *Invalid code format*\n\nPlease enter a 6-digit verification code from the GitPing web dashboard.',
         { parse_mode: 'MarkdownV2' }
       );
       return;
@@ -501,7 +503,7 @@ ${subscriptions.length > 0
       } else {
         await this.telegram.sendMessage(
           chatId, 
-          '❌ *Invalid or expired code*\n\nThe connection code is either invalid, expired, or already used\\. Please generate a new code from the GitPing web dashboard\\.',
+          '❌ *Invalid or expired code*\n\nThe verification code is either invalid, expired, or already used\\. Please generate a new code from the GitPing web dashboard\\.',
           { parse_mode: 'MarkdownV2' }
         );
       }

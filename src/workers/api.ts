@@ -237,6 +237,77 @@ export default {
         });
       }
 
+      // GET /channels - Get user's verified channels
+      if (request.method === 'GET' && url.pathname === '/channels') {
+        const token = auth.extractToken(request);
+        
+        if (!token) {
+          return new Response(JSON.stringify({ error: 'Authentication required' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+
+        const payload = await auth.verifyJWT(token);
+        if (!payload) {
+          return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+
+        const channels = await db.getUserVerifiedChannels(payload.sub);
+        
+        return new Response(JSON.stringify(channels), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        });
+      }
+
+      // DELETE /channels/:id - Remove a verified channel
+      if (request.method === 'DELETE' && url.pathname.startsWith('/channels/')) {
+        const channelId = parseInt(url.pathname.split('/')[2]);
+        
+        const token = auth.extractToken(request);
+        if (!token) {
+          return new Response(JSON.stringify({ error: 'Authentication required' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+
+        const payload = await auth.verifyJWT(token);
+        if (!payload) {
+          return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+
+        if (isNaN(channelId)) {
+          return new Response(JSON.stringify({ error: 'Invalid channel ID' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+
+        // Remove channel from all subscriptions first
+        await db.removeChannelFromSubscriptions(channelId);
+        
+        // Delete the channel
+        const deleted = await db.deleteVerifiedChannel(channelId, payload.sub);
+        
+        if (deleted) {
+          return new Response(JSON.stringify({ message: 'Channel removed successfully' }), {
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        } else {
+          return new Response(JSON.stringify({ error: 'Channel not found' }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+      }
+
       // POST /subscriptions - Create a new subscription
       if (request.method === 'POST' && url.pathname === '/subscriptions') {
         const body: CreateSubscriptionRequest = await request.json();
@@ -250,8 +321,8 @@ export default {
           });
         }
 
-        // Validate input
-        if (!body.repo || !body.kind || !body.channels?.length) {
+        // Validate input - either channels (for Telegram bot) or channel_ids (for web users)
+        if (!body.repo || !body.kind || (!body.channels?.length && !body.channel_ids?.length)) {
           return new Response(JSON.stringify({ error: 'Missing required fields' }), {
             status: 400,
             headers: { 'Content-Type': 'application/json', ...corsHeaders }
@@ -288,8 +359,13 @@ export default {
           repoId,
           body.kind,
           body.filters || {},
-          body.channels
+          body.channels || [] // Use empty array for web users
         );
+
+        // If using verified channels (web users), create subscription_channels relationships
+        if (body.channel_ids?.length) {
+          await db.createSubscriptionChannels(subscriptionId, body.channel_ids);
+        }
 
         // Fetch latest release info for the new subscription
         let last_release = null;
@@ -310,13 +386,25 @@ export default {
           // Continue without release info if fetch fails
         }
 
+        // Get channel information for response
+        let responseChannels = body.channels || [];
+        if (body.channel_ids?.length) {
+          // For web users, get the verified channels
+          const verifiedChannels = await db.getSubscriptionChannels(subscriptionId);
+          responseChannels = verifiedChannels.map(ch => ({
+            type: ch.channel_type as 'telegram',
+            chat_id: ch.channel_identifier,
+            display_name: ch.display_name
+          }));
+        }
+
         // Return complete subscription object
         const newSubscription = {
           id: subscriptionId,
           repo: `${owner}/${name}`,
           kind: body.kind,
           filters: body.filters || {},
-          channels: body.channels,
+          channels: responseChannels,
           created_at: Math.floor(Date.now() / 1000),
           last_release
         };
@@ -365,12 +453,24 @@ export default {
             // Continue without release info if fetch fails
           }
 
+          // Determine if this is a web user (github_*) or Telegram-only user
+          let channels = JSON.parse(sub.channels_json);
+          if (authResult.userId!.startsWith('github_')) {
+            // For web users, get verified channels
+            const verifiedChannels = await db.getSubscriptionChannels(sub.id);
+            channels = verifiedChannels.map(ch => ({
+              type: ch.channel_type,
+              chat_id: ch.channel_identifier,
+              display_name: ch.display_name
+            }));
+          }
+
           return {
             id: sub.id,
             repo: `${sub.owner}/${sub.name}`,
             kind: sub.kind,
             filters: JSON.parse(sub.filters_json),
-            channels: JSON.parse(sub.channels_json),
+            channels: channels,
             created_at: sub.created_at,
             last_release
           };

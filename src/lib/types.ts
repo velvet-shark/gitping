@@ -86,6 +86,22 @@ export interface ConnectionCode {
   tg_chat_id?: string;
 }
 
+export interface VerifiedChannel {
+  id: number;
+  user_id: string;
+  channel_type: 'telegram' | 'email' | 'slack' | 'webhook';
+  channel_identifier: string;
+  display_name?: string;
+  verified_at: number;
+  created_at: number;
+}
+
+export interface SubscriptionChannel {
+  subscription_id: number;
+  channel_id: number;
+  created_at: number;
+}
+
 // Filter Types
 export interface ReleaseFilters {
   include_prereleases?: boolean;
@@ -124,11 +140,12 @@ export type Channel = TelegramChannel | EmailChannel | SlackChannel | WebhookCha
 
 // API Types
 export interface CreateSubscriptionRequest {
-  user_id: string;
+  user_id?: string; // for backward compatibility with Telegram bot
   repo: string; // "owner/name"
   kind: 'release' | 'commit';
   filters?: ReleaseFilters | CommitFilters;
-  channels: Channel[];
+  channels?: Channel[]; // for backward compatibility with Telegram bot
+  channel_ids?: number[]; // for web users with verified channels
 }
 
 export interface ConnectTelegramRequest {
