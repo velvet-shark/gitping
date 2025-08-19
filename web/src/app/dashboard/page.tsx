@@ -48,6 +48,11 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [showAddRepo, setShowAddRepo] = useState(false)
 
+  // Helper function to check if Telegram is already connected
+  const hasTelegramChannel = () => {
+    return channels.some(channel => channel.channel_type === 'telegram')
+  }
+
   const loadUserData = async (skipCache = false) => {
     try {
       if (!skipCache) {
@@ -346,12 +351,28 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="text-sm text-gray-500 mb-4">
-                <p>1. Open Telegram and find the GitPing bot</p>
-                <p>2. Send: <code className="bg-gray-200 text-gray-800 px-1 rounded font-mono">/verify {connectionCode}</code></p>
+                <p>1. Open Telegram and start the GitPing bot:</p>
+                <p className="ml-4 mb-2">
+                  <a 
+                    href="https://t.me/gitping_notify_bot" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 underline font-medium"
+                  >
+                    @gitping_notify_bot
+                  </a>
+                </p>
+                <p>2. Send this verification command:</p>
+                <p className="ml-4 mb-2">
+                  <code className="bg-gray-200 text-gray-800 px-1 rounded font-mono">/verify {connectionCode}</code>
+                </p>
                 <p>3. The code expires in 10 minutes</p>
               </div>
               <button
-                onClick={() => setShowConnectionCode(false)}
+                onClick={() => {
+                  setShowConnectionCode(false)
+                  refreshUserData() // Refresh to check if channel was added
+                }}
                 className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
               >
                 Close
@@ -367,13 +388,15 @@ export default function DashboardPage() {
               <h2 className="text-lg font-semibold text-gray-900">
                 Notification Channels ({channels.length})
               </h2>
-              <button 
-                onClick={generateConnectionCode}
-                className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add Telegram</span>
-              </button>
+              {!hasTelegramChannel() && (
+                <button 
+                  onClick={generateConnectionCode}
+                  className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add Telegram</span>
+                </button>
+              )}
             </div>
           </div>
           
