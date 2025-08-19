@@ -291,8 +291,36 @@ export default {
           body.channels
         );
 
-        return new Response(JSON.stringify({ 
+        // Fetch latest release info for the new subscription
+        let last_release = null;
+        try {
+          const releases = await github.getLatestReleases(owner, name, 1);
+          if (releases && releases.length > 0) {
+            const release = releases[0];
+            last_release = {
+              tag_name: release.tag_name,
+              published_at: release.published_at,
+              html_url: release.html_url
+            };
+          }
+        } catch (error) {
+          console.log(`Failed to fetch releases for ${owner}/${name}:`, error);
+          // Continue without release info if fetch fails
+        }
+
+        // Return complete subscription object
+        const newSubscription = {
           id: subscriptionId,
+          repo: `${owner}/${name}`,
+          kind: body.kind,
+          filters: body.filters || {},
+          channels: body.channels,
+          created_at: Math.floor(Date.now() / 1000),
+          last_release
+        };
+
+        return new Response(JSON.stringify({ 
+          ...newSubscription,
           message: 'Subscription created successfully' 
         }), {
           status: 201,

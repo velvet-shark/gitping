@@ -150,9 +150,22 @@ export default function DashboardPage() {
     setShowAddRepo(true)
   }
 
-  const handleAddRepoSuccess = () => {
-    // Refresh subscriptions after adding a new repository
-    refreshUserData()
+  const handleAddRepoSuccess = (newSubscription?: any) => {
+    if (newSubscription) {
+      // Add the new subscription to the current list immediately
+      setSubscriptions(prev => [...prev, {
+        id: newSubscription.id,
+        repo: newSubscription.repo,
+        kind: newSubscription.kind,
+        filters: newSubscription.filters,
+        channels: newSubscription.channels,
+        created_at: newSubscription.created_at,
+        last_release: newSubscription.last_release
+      }])
+    } else {
+      // Fallback: refresh subscriptions after adding a new repository
+      refreshUserData()
+    }
   }
 
   const handleDeleteSubscription = async (subscriptionId: number, repoName: string) => {
@@ -298,24 +311,14 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <Bell className="h-8 w-8 text-blue-600" />
-              <div className="ml-4">
-                <p className="text-2xl font-bold text-gray-900">{subscriptions.length}</p>
-                <p className="text-gray-600">Active Subscriptions</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Subscriptions */}
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-900">Your Subscriptions</h2>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Your Subscriptions ({subscriptions.length})
+              </h2>
               <button 
                 onClick={handleAddRepository}
                 className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"

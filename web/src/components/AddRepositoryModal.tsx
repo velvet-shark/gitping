@@ -6,7 +6,7 @@ import { X, Plus, Github } from 'lucide-react'
 interface AddRepositoryModalProps {
   isOpen: boolean
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (newSubscription?: any) => void
 }
 
 export default function AddRepositoryModal({ isOpen, onClose, onSuccess }: AddRepositoryModalProps) {
@@ -73,9 +73,11 @@ export default function AddRepositoryModal({ isOpen, onClose, onSuccess }: AddRe
         throw new Error(errorData.error || 'Failed to add repository')
       }
 
+      const result = await response.json()
+
       // Success
       setRepoUrl('')
-      onSuccess()
+      onSuccess(result)
       onClose()
 
     } catch (err) {
