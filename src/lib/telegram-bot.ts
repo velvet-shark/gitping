@@ -42,14 +42,22 @@ export class TelegramBot {
   ) {}
 
   async handleUpdate(update: TelegramUpdate): Promise<void> {
+    console.log('Received Telegram update:', JSON.stringify(update, null, 2));
+    
     try {
       if (update.message) {
+        console.log('Processing message update');
         await this.handleMessage(update.message);
       } else if (update.callback_query) {
+        console.log('Processing callback query update');
         await this.handleCallbackQuery(update.callback_query);
+      } else {
+        console.log('Unknown update type, ignoring');
       }
     } catch (error) {
       console.error('Error handling Telegram update:', error);
+      // Re-throw the error so we can see it in the worker logs
+      throw error;
     }
   }
 

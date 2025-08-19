@@ -14,6 +14,13 @@ export class TelegramAPI {
   } = {}): Promise<void> {
     const url = `${this.apiUrl}/sendMessage`;
     
+    console.log(`Sending Telegram message to chat ${chatId}: ${text.substring(0, 100)}...`);
+    
+    // Check if bot token is available
+    if (!this.env.TELEGRAM_BOT_TOKEN) {
+      throw new Error('TELEGRAM_BOT_TOKEN is not configured');
+    }
+    
     const body = {
       chat_id: chatId,
       text,
@@ -21,6 +28,11 @@ export class TelegramAPI {
       parse_mode: options.parse_mode,
       reply_markup: options.reply_markup
     };
+
+    console.log('Telegram API request:', {
+      url,
+      body: JSON.stringify(body, null, 2)
+    });
 
     const response = await fetch(url, {
       method: 'POST',
@@ -30,10 +42,16 @@ export class TelegramAPI {
       body: JSON.stringify(body)
     });
 
+    console.log(`Telegram API response: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`Telegram API error: ${response.status} ${errorText}`);
       throw new Error(`Telegram API error: ${response.status} ${errorText}`);
     }
+    
+    const responseText = await response.text();
+    console.log('Telegram API response body:', responseText);
   }
 
   formatReleaseMessage(

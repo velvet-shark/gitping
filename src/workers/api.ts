@@ -579,20 +579,32 @@ export default {
 
       // Telegram webhook handler (for bot commands)
       if (request.method === 'POST' && url.pathname === '/webhook/telegram') {
-        const update = await request.json();
-        
-        // Import and use the Telegram bot handler
-        const { TelegramBot } = await import('../lib/telegram-bot');
-        const { TelegramAPI } = await import('../lib/telegram');
-        
-        const telegramAPI = new TelegramAPI(env);
-        const bot = new TelegramBot(env, db, telegramAPI);
-        
-        await bot.handleUpdate(update);
+        try {
+          const update = await request.json();
+          console.log('Webhook received update:', JSON.stringify(update, null, 2));
+          
+          // Import and use the Telegram bot handler
+          const { TelegramBot } = await import('../lib/telegram-bot');
+          const { TelegramAPI } = await import('../lib/telegram');
+          
+          const telegramAPI = new TelegramAPI(env);
+          const bot = new TelegramBot(env, db, telegramAPI);
+          
+          await bot.handleUpdate(update);
 
-        return new Response(JSON.stringify({ status: 'ok' }), {
-          headers: { 'Content-Type': 'application/json' }
-        });
+          return new Response(JSON.stringify({ status: 'ok' }), {
+            headers: { 'Content-Type': 'application/json' }
+          });
+        } catch (error) {
+          console.error('Webhook error:', error);
+          return new Response(JSON.stringify({ 
+            error: 'Webhook processing failed',
+            message: error instanceof Error ? error.message : 'Unknown error'
+          }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
       }
 
       return new Response(JSON.stringify({ error: 'Not found' }), {
