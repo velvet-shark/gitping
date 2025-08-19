@@ -314,13 +314,35 @@ export default {
 
         const subscriptions = await db.getUserSubscriptions(authResult.userId!);
         
-        const response = subscriptions.map(sub => ({
-          id: sub.id,
-          repo: `${sub.owner}/${sub.name}`,
-          kind: sub.kind,
-          filters: JSON.parse(sub.filters_json),
-          channels: JSON.parse(sub.channels_json),
-          created_at: sub.created_at
+        // Fetch latest release info for each repository
+        const response = await Promise.all(subscriptions.map(async (sub) => {
+          let last_release = null;
+          
+          try {
+            // Get latest release from GitHub API
+            const releases = await github.getLatestReleases(sub.owner, sub.name, 1);
+            if (releases && releases.length > 0) {
+              const release = releases[0];
+              last_release = {
+                tag_name: release.tag_name,
+                published_at: release.published_at,
+                html_url: release.html_url
+              };
+            }
+          } catch (error) {
+            console.log(`Failed to fetch releases for ${sub.owner}/${sub.name}:`, error);
+            // Continue without release info if fetch fails
+          }
+
+          return {
+            id: sub.id,
+            repo: `${sub.owner}/${sub.name}`,
+            kind: sub.kind,
+            filters: JSON.parse(sub.filters_json),
+            channels: JSON.parse(sub.channels_json),
+            created_at: sub.created_at,
+            last_release
+          };
         }));
 
         return new Response(JSON.stringify(response), {

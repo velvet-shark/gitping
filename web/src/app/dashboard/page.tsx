@@ -21,6 +21,11 @@ interface Subscription {
   filters: any
   channels: any[]
   created_at: number
+  last_release?: {
+    tag_name: string
+    published_at: string
+    html_url: string
+  }
 }
 
 export default function DashboardPage() {
@@ -294,33 +299,13 @@ export default function DashboardPage() {
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 gap-6 mb-8">
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center">
               <Bell className="h-8 w-8 text-blue-600" />
               <div className="ml-4">
                 <p className="text-2xl font-bold text-gray-900">{subscriptions.length}</p>
                 <p className="text-gray-600">Active Subscriptions</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <MessageSquare className={`h-8 w-8 ${user.tg_chat_id ? 'text-green-600' : 'text-gray-400'}`} />
-              <div className="ml-4">
-                <p className={`text-2xl font-bold ${user.tg_chat_id ? 'text-green-600' : 'text-gray-400'}`}>
-                  {user.tg_chat_id ? '✓' : '✗'}
-                </p>
-                <p className="text-gray-600">Telegram Connected</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <Settings className="h-8 w-8 text-gray-600" />
-              <div className="ml-4">
-                <p className="text-2xl font-bold text-gray-900">1</p>
-                <p className="text-gray-600">Notification Channels</p>
               </div>
             </div>
           </div>
@@ -359,17 +344,40 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-4">
                 {subscriptions.map((sub) => (
-                  <div key={sub.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                    <div>
-                      <h3 className="font-medium text-gray-900">{sub.repo}</h3>
-                      <p className="text-sm text-gray-600">
-                        {sub.kind} notifications • {sub.channels.length} channel(s)
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-2">
+                  <div key={sub.id} className="p-4 border border-gray-200 rounded-lg">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="font-medium text-gray-900">{sub.repo}</h3>
+                          <div className="flex space-x-1">
+                            {sub.channels.map((channel, index) => (
+                              <span 
+                                key={index} 
+                                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                              >
+                                Telegram
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">
+                          {sub.kind} notifications
+                        </p>
+                        {sub.last_release ? (
+                          <div className="text-sm text-gray-500">
+                            Last release: <span className="font-medium">{sub.last_release.tag_name}</span>
+                            <span className="mx-2">•</span>
+                            {new Date(sub.last_release.published_at).toLocaleDateString()}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-400">
+                            No releases yet
+                          </div>
+                        )}
+                      </div>
                       <button
                         onClick={() => handleDeleteSubscription(sub.id, sub.repo)}
-                        className="text-red-400 hover:text-red-600"
+                        className="text-red-400 hover:text-red-600 ml-4"
                         title="Delete subscription"
                       >
                         <Trash2 className="h-4 w-4" />
