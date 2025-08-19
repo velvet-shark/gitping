@@ -25,14 +25,31 @@ export class DatabaseService {
   async createOrUpdateGitHubUser(githubUser: any, email?: string): Promise<User> {
     const userId = `github_${githubUser.id}`;
     
-    const result = await this.env.DB
+    // First try to insert the user if they don't exist
+    await this.env.DB
       .prepare(`
-        INSERT OR REPLACE INTO users (
+        INSERT OR IGNORE INTO users (
           id, github_id, github_username, name, email, avatar_url, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM users WHERE id = ?), strftime('%s','now')))
+        ) VALUES (?, ?, ?, ?, ?, ?, strftime('%s','now'))
       `)
       .bind(
         userId,
+        githubUser.id.toString(),
+        githubUser.login,
+        githubUser.name || githubUser.login,
+        email || githubUser.email,
+        githubUser.avatar_url
+      )
+      .run();
+
+    // Then update the user with latest GitHub info (preserving verified channels)
+    await this.env.DB
+      .prepare(`
+        UPDATE users 
+        SET github_id = ?, github_username = ?, name = ?, email = ?, avatar_url = ?
+        WHERE id = ?
+      `)
+      .bind(
         githubUser.id.toString(),
         githubUser.login,
         githubUser.name || githubUser.login,
