@@ -478,12 +478,27 @@ export class DatabaseService {
   }
 
   async deleteVerifiedChannel(channelId: number, userId: string): Promise<boolean> {
+    console.log(`Attempting to delete verified channel ${channelId} for user ${userId}`);
+    
+    // First check if the channel exists
+    const existingChannel = await this.env.DB
+      .prepare('SELECT * FROM verified_channels WHERE id = ? AND user_id = ?')
+      .bind(channelId, userId)
+      .first();
+    
+    console.log('Existing channel before deletion:', existingChannel);
+    
     const result = await this.env.DB
       .prepare('DELETE FROM verified_channels WHERE id = ? AND user_id = ?')
       .bind(channelId, userId)
       .run();
     
-    return result.changes > 0;
+    console.log('Delete result:', {
+      changes: result.changes,
+      meta: result.meta
+    });
+    
+    return result.meta.changes > 0;
   }
 
   // Subscription Channels (many-to-many relationship)

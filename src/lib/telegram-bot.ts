@@ -2,6 +2,16 @@ import type { Env } from './types';
 import { DatabaseService } from './db';
 import { TelegramAPI } from './telegram';
 
+// Utility function for formatting dates in server-side code
+function formatDate(date: Date | number): string {
+  const dateObj = typeof date === 'number' ? new Date(date * 1000) : date;
+  return dateObj.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+}
+
 export interface TelegramUpdate {
   update_id: number;
   message?: {
@@ -349,7 +359,7 @@ You'll receive notifications when new releases are published!`;
       let message = `📋 *Your Subscriptions* (${subscriptions.length})\n\n`;
 
       subscriptions.forEach((sub, index) => {
-        const createdDate = new Date(sub.created_at * 1000).toLocaleDateString();
+        const createdDate = formatDate(sub.created_at);
         message += `${index + 1}. *${sub.owner}/${sub.name}*\n`;
         message += `   🔔 Releases • 📅 Since ${createdDate}\n`;
         message += `   ID: \`${sub.id}\`\n\n`;

@@ -290,19 +290,34 @@ export default {
           });
         }
 
-        // Remove channel from all subscriptions first
-        await db.removeChannelFromSubscriptions(channelId);
-        
-        // Delete the channel
-        const deleted = await db.deleteVerifiedChannel(channelId, payload.sub);
-        
-        if (deleted) {
-          return new Response(JSON.stringify({ message: 'Channel removed successfully' }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
-        } else {
-          return new Response(JSON.stringify({ error: 'Channel not found' }), {
-            status: 404,
+        try {
+          console.log(`Deleting channel ${channelId} for user ${payload.sub}`);
+          
+          // Remove channel from all subscriptions first
+          await db.removeChannelFromSubscriptions(channelId);
+          
+          // Delete the channel
+          const deleted = await db.deleteVerifiedChannel(channelId, payload.sub);
+          
+          console.log(`Channel deletion result: ${deleted}`);
+          
+          if (deleted) {
+            return new Response(JSON.stringify({ message: 'Channel removed successfully' }), {
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            });
+          } else {
+            return new Response(JSON.stringify({ error: 'Channel not found' }), {
+              status: 404,
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            });
+          }
+        } catch (error) {
+          console.error('Error deleting channel:', error);
+          return new Response(JSON.stringify({ 
+            error: 'Failed to delete channel',
+            message: error instanceof Error ? error.message : 'Unknown error'
+          }), {
+            status: 500,
             headers: { 'Content-Type': 'application/json', ...corsHeaders }
           });
         }

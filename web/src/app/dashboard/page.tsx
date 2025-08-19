@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Bell, Plus, Settings, LogOut, MessageSquare, Copy, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import AddRepositoryModal from '../../components/AddRepositoryModal'
+import { formatDate, formatDateTime, getRelativeTime, formatDateWithRelative } from '../../lib/dateUtils'
 
 interface User {
   id: string
@@ -431,10 +432,10 @@ export default function DashboardPage() {
                           </span>
                         </div>
                         <p className="text-sm text-gray-500 mb-2">
-                          Added {new Date(channel.created_at * 1000).toLocaleDateString()}
+                          Added {formatDateWithRelative(channel.created_at)}
                         </p>
                         <p className="text-xs text-gray-400">
-                          Verified {new Date(channel.verified_at * 1000).toLocaleString()}
+                          Verified {formatDateTime(channel.verified_at)}
                         </p>
                       </div>
                       <button
@@ -506,11 +507,14 @@ export default function DashboardPage() {
                         <p className="text-sm text-gray-600 mb-2">
                           {sub.kind} notifications
                         </p>
+                        <div className="text-sm text-gray-500 mb-2">
+                          Subscribed {formatDateWithRelative(sub.created_at)}
+                        </div>
                         {sub.last_release ? (
                           <div className="text-sm text-gray-500">
                             Last release: <span className="font-medium">{sub.last_release.tag_name}</span>
                             <span className="mx-2">•</span>
-                            {new Date(sub.last_release.published_at).toLocaleDateString()}
+                            {formatDateWithRelative(sub.last_release.published_at)}
                           </div>
                         ) : (
                           <div className="text-sm text-gray-400">
