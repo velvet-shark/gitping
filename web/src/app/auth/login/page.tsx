@@ -76,7 +76,7 @@ function LoginPageContent() {
             onClick={handleGitHubLogin}
             disabled={loading}
             className={`
-              w-full flex items-center justify-center space-x-3 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors
+              w-full flex items-center justify-center space-x-3 px-6 py-3 border-2 border-gray-300 rounded-lg text-gray-900 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors shadow-sm
               ${loading ? 'opacity-50 cursor-not-allowed' : ''}
             `}
           >

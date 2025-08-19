@@ -285,12 +285,13 @@ export default function DashboardPage() {
               <p className="text-gray-600 mb-4">
                 Send this code to the GitPing Telegram bot to link your accounts:
               </p>
-              <div className="bg-gray-100 p-4 rounded-lg mb-4">
+              <div className="bg-gray-50 border-2 border-gray-200 p-4 rounded-lg mb-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-2xl font-mono font-bold">{connectionCode}</span>
+                  <span className="text-2xl font-mono font-bold text-gray-900">{connectionCode}</span>
                   <button
                     onClick={copyConnectionCode}
-                    className="p-2 text-gray-500 hover:text-gray-700"
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                    title="Copy code"
                   >
                     <Copy className="h-5 w-5" />
                   </button>
@@ -298,7 +299,7 @@ export default function DashboardPage() {
               </div>
               <div className="text-sm text-gray-500 mb-4">
                 <p>1. Open Telegram and find the GitPing bot</p>
-                <p>2. Send: <code className="bg-gray-100 px-1 rounded">/connect {connectionCode}</code></p>
+                <p>2. Send: <code className="bg-gray-200 text-gray-800 px-1 rounded font-mono">/connect {connectionCode}</code></p>
                 <p>3. The code expires in 10 minutes</p>
               </div>
               <button
