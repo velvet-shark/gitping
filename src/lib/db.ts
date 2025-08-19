@@ -389,7 +389,7 @@ export class DatabaseService {
     return result as ConnectionCode | null;
   }
 
-  async useConnectionCode(code: string, tgChatId: string): Promise<boolean> {
+  async useConnectionCode(code: string, tgChatId: string, telegramUserId?: string): Promise<boolean> {
     const now = Math.floor(Date.now() / 1000);
     
     // First check if code exists and is valid
@@ -399,7 +399,7 @@ export class DatabaseService {
       return false;
     }
 
-    console.log(`Using connection code ${code} for user ${connectionCode.user_id}, linking to Telegram chat ${tgChatId}`);
+    console.log(`Using connection code ${code} for GitHub user ${connectionCode.user_id}, linking to Telegram chat ${tgChatId}`);
 
     // Use the code and link Telegram
     await this.env.DB
@@ -411,7 +411,7 @@ export class DatabaseService {
       .bind(now, tgChatId, code)
       .run();
 
-    // Create verified channel instead of updating user directly
+    // Create verified channel for the GitHub user
     await this.createVerifiedChannel(
       connectionCode.user_id,
       'telegram',
@@ -419,7 +419,13 @@ export class DatabaseService {
       'Telegram'
     );
 
-    console.log(`Created verified Telegram channel for user ${connectionCode.user_id} with chat ID ${tgChatId}`);
+    // Link Telegram user to GitHub account (if telegramUserId provided)
+    if (telegramUserId) {
+      await this.linkTelegramUser(telegramUserId, connectionCode.user_id);
+      console.log(`Linked Telegram user ${telegramUserId} to GitHub user ${connectionCode.user_id}`);
+    }
+
+    console.log(`Created verified Telegram channel for GitHub user ${connectionCode.user_id} with chat ID ${tgChatId}`);
 
     return true;
   }
@@ -515,6 +521,39 @@ export class DatabaseService {
     await this.env.DB
       .prepare('DELETE FROM subscription_channels WHERE channel_id = ?')
       .bind(channelId)
+      .run();
+  }
+
+  // Telegram User Links (GitHub-first architecture)
+  async linkTelegramUser(telegramUserId: string, githubUserId: string): Promise<void> {
+    await this.env.DB
+      .prepare('INSERT OR REPLACE INTO telegram_user_links (telegram_user_id, github_user_id) VALUES (?, ?)')
+      .bind(telegramUserId, githubUserId)
+      .run();
+  }
+
+  async getGitHubUserByTelegramId(telegramUserId: string): Promise<string | null> {
+    const result = await this.env.DB
+      .prepare('SELECT github_user_id FROM telegram_user_links WHERE telegram_user_id = ?')
+      .bind(telegramUserId)
+      .first();
+    
+    return result ? result.github_user_id as string : null;
+  }
+
+  async getTelegramChannelId(githubUserId: string): Promise<number | null> {
+    const result = await this.env.DB
+      .prepare("SELECT id FROM verified_channels WHERE user_id = ? AND channel_type = 'telegram' LIMIT 1")
+      .bind(githubUserId)
+      .first();
+    
+    return result ? result.id as number : null;
+  }
+
+  async unlinkTelegramUser(telegramUserId: string): Promise<void> {
+    await this.env.DB
+      .prepare('DELETE FROM telegram_user_links WHERE telegram_user_id = ?')
+      .bind(telegramUserId)
       .run();
   }
 }

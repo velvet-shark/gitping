@@ -112,6 +112,14 @@ CREATE TABLE IF NOT EXISTS subscription_channels (
   FOREIGN KEY (channel_id) REFERENCES verified_channels(id) ON DELETE CASCADE
 );
 
+-- Link Telegram users to GitHub accounts (for bot usage)
+CREATE TABLE IF NOT EXISTS telegram_user_links (
+  telegram_user_id TEXT PRIMARY KEY,
+  github_user_id TEXT NOT NULL,
+  linked_at INTEGER DEFAULT (strftime('%s','now')),
+  FOREIGN KEY (github_user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_subs_user_repo ON subscriptions(user_id, repo_id);
 CREATE INDEX IF NOT EXISTS idx_subs_repo_kind ON subscriptions(repo_id, kind);
@@ -130,3 +138,4 @@ CREATE INDEX IF NOT EXISTS idx_verified_channels_user ON verified_channels(user_
 CREATE INDEX IF NOT EXISTS idx_verified_channels_type ON verified_channels(channel_type);
 CREATE INDEX IF NOT EXISTS idx_subscription_channels_sub ON subscription_channels(subscription_id);
 CREATE INDEX IF NOT EXISTS idx_subscription_channels_channel ON subscription_channels(channel_id);
+CREATE INDEX IF NOT EXISTS idx_telegram_links_github ON telegram_user_links(github_user_id);
