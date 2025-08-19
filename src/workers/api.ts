@@ -294,7 +294,9 @@ export default {
         // Fetch latest release info for the new subscription
         let last_release = null;
         try {
-          const releases = await github.getLatestReleases(owner, name, 1);
+          const result = await github.getReleases(owner, name);
+          const releases = result.releases;
+          
           if (releases && releases.length > 0) {
             const release = releases[0];
             last_release = {
@@ -348,7 +350,8 @@ export default {
           
           try {
             // Get latest release from GitHub API
-            const releases = await github.getLatestReleases(sub.owner, sub.name, 1);
+            const result = await github.getReleases(sub.owner, sub.name);
+            const releases = result.releases;
             if (releases && releases.length > 0) {
               const release = releases[0];
               last_release = {
