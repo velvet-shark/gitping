@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Bell, Plus, Settings, LogOut, MessageSquare, Copy, Trash2 } from 'lucide-react'
+import { Bell, Plus, LogOut, MessageSquare, Copy, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import AddRepositoryModal from '../../components/AddRepositoryModal'
 import { formatDate, formatDateTime, getRelativeTime, formatDateWithRelative } from '../../lib/dateUtils'
@@ -46,7 +46,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [connectionCode, setConnectionCode] = useState('')
   const [showConnectionCode, setShowConnectionCode] = useState(false)
-  const [refreshing, setRefreshing] = useState(false)
   const [showAddRepo, setShowAddRepo] = useState(false)
 
   // Helper function to check if Telegram is already connected
@@ -116,17 +115,19 @@ export default function DashboardPage() {
       console.error('Failed to load user data:', error)
     } finally {
       setLoading(false)
-      setRefreshing(false)
     }
-  }
-
-  const refreshUserData = async () => {
-    setRefreshing(true)
-    await loadUserData(true) // Skip cache to get fresh data
   }
 
   useEffect(() => {
     loadUserData()
+
+    // Auto-refresh when user returns to the tab
+    const handleFocus = () => {
+      loadUserData(true) // Skip cache for fresh data
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
   }, [])
 
   const generateConnectionCode = async () => {
@@ -191,7 +192,7 @@ export default function DashboardPage() {
       }])
     } else {
       // Fallback: refresh subscriptions after adding a new repository
-      refreshUserData()
+      loadUserData(true)
     }
   }
 
@@ -199,6 +200,10 @@ export default function DashboardPage() {
     if (!confirm(`Are you sure you want to unsubscribe from ${repoName}?`)) {
       return
     }
+
+    // Optimistic update - remove from UI immediately
+    const originalSubscriptions = [...subscriptions]
+    setSubscriptions(subscriptions.filter(sub => sub.id !== subscriptionId))
 
     try {
       const token = localStorage.getItem('auth_token')
@@ -214,11 +219,12 @@ export default function DashboardPage() {
         throw new Error(errorData.error || 'Failed to delete subscription')
       }
 
-      // Refresh subscriptions after deletion
-      refreshUserData()
+      // Success - subscription is already removed from UI
     } catch (error) {
       console.error('Failed to delete subscription:', error)
       alert('Failed to delete subscription. Please try again.')
+      // Rollback optimistic update
+      setSubscriptions(originalSubscriptions)
     }
   }
 
@@ -226,6 +232,10 @@ export default function DashboardPage() {
     if (!confirm(`Are you sure you want to remove ${displayName} channel? This will also remove it from all subscriptions.`)) {
       return
     }
+
+    // Optimistic update - remove from UI immediately
+    const originalChannels = [...channels]
+    setChannels(channels.filter(channel => channel.id !== channelId))
 
     try {
       const token = localStorage.getItem('auth_token')
@@ -241,11 +251,14 @@ export default function DashboardPage() {
         throw new Error(errorData.error || 'Failed to delete channel')
       }
 
-      // Refresh all data after channel deletion
-      refreshUserData()
+      // Success - channel is already removed from UI
+      // Also refresh subscriptions to update channel associations
+      loadUserData(true)
     } catch (error) {
       console.error('Failed to delete channel:', error)
       alert('Failed to delete channel. Please try again.')
+      // Rollback optimistic update
+      setChannels(originalChannels)
     }
   }
 
@@ -308,14 +321,6 @@ export default function DashboardPage() {
                 </button>
               )}
               <button
-                onClick={refreshUserData}
-                disabled={refreshing}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 disabled:opacity-50"
-              >
-                <Settings className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                <span>Refresh</span>
-              </button>
-              <button
                 onClick={handleLogout}
                 className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
               >
@@ -372,7 +377,7 @@ export default function DashboardPage() {
               <button
                 onClick={() => {
                   setShowConnectionCode(false)
-                  refreshUserData() // Refresh to check if channel was added
+                  loadUserData(true) // Refresh to check if channel was added
                 }}
                 className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
               >
