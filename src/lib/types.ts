@@ -10,6 +10,7 @@ export interface Env {
   GITHUB_CLIENT_SECRET: string;
   JWT_SECRET: string;
   FRONTEND_URL: string;
+  API_URL?: string;
 }
 
 // Database Models

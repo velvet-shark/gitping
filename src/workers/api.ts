@@ -52,8 +52,8 @@ export default {
       // GET /auth/github - Initiate GitHub OAuth flow
       if (request.method === 'GET' && url.pathname === '/auth/github') {
         const state = auth.generateRandomString(16);
-        // Use the current request origin for the callback URL
-        const apiUrl = `${url.protocol}//${url.host}`;
+        // Use API_URL for callback, fallback to current URL if not set
+        const apiUrl = env.API_URL || `${url.protocol}//${url.host}`;
         const oauthURL = auth.getGitHubOAuthURL(state, apiUrl);
         
         return new Response(JSON.stringify({ url: oauthURL, state }), {
