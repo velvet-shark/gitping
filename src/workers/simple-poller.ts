@@ -174,7 +174,6 @@ async function sendReleaseNotifications(
   for (const subscription of subscriptions) {
     try {
       const filters = JSON.parse(subscription.filters_json);
-      const channels = JSON.parse(subscription.channels_json);
       
       // Apply filters
       if (filters.include_prereleases === false && release.prerelease) {
@@ -192,18 +191,21 @@ async function sendReleaseNotifications(
         }
       }
       
+      // Get verified channels for this subscription
+      const channels = await db.getSubscriptionChannels(subscription.id);
+      
       // Send to each channel
       for (const channel of channels) {
         const notificationId = await db.createNotification(
           eventId,
           subscription.id,
-          channel.type
+          channel.channel_type
         );
         
         try {
-          if (channel.type === 'telegram' && channel.chat_id) {
+          if (channel.channel_type === 'telegram' && channel.channel_identifier) {
             const message = telegram.formatReleaseMessage(repo.owner, repo.name, release);
-            await telegram.sendMessage(channel.chat_id, message, { parse_mode: 'Markdown' });
+            await telegram.sendMessage(channel.channel_identifier, message, { parse_mode: 'Markdown' });
             await db.updateNotificationStatus(notificationId, 'sent');
           }
         } catch (error) {
