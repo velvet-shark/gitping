@@ -23,7 +23,7 @@ function LoginPageContent() {
     setError("");
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://gitping-api.modelarena.workers.dev";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://gitping-api.vlvt.sh";
       const response = await fetch(`${apiUrl}/auth/github`);
 
       if (!response.ok) {

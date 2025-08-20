@@ -125,7 +125,7 @@ export class TelegramBot {
 To use this bot, you need to connect your GitHub account first:
 
 *Setup Steps:*
-1. Visit [GitPing Web App](https://gitping.pages.dev)
+1. Visit [GitPing Web App](https://gitping.vlvt.sh)
 2. Sign in with your GitHub account
 3. Add Telegram channel and get verification code
 4. Send: \`/verify <your-code>\`
@@ -168,7 +168,7 @@ Let's get started! 🚀`;
           { text: '📚 Subscribe to Repo', callback_data: 'action_subscribe' }
         ],
         [
-          { text: '🌐 Open Web App', url: 'https://gitping.pages.dev' }
+          { text: '🌐 Open Web App', url: 'https://gitping.vlvt.sh' }
         ]
       ]
     };
@@ -183,7 +183,7 @@ Let's get started! 🚀`;
     const helpMessage = `🤖 *GitPing Bot Commands*
 
 ⚠️ *GitHub Account Required*
-This bot requires a verified GitHub account. Visit https://gitping.pages.dev to set up.
+This bot requires a verified GitHub account. Visit https://gitping.vlvt.sh to set up.
 
 *Repository Management:*
 /subscribe <owner/repo> - Subscribe to releases
@@ -206,7 +206,7 @@ This bot requires a verified GitHub account. Visit https://gitping.pages.dev to 
 • Rich formatted messages
 
 *Need more help?*
-Visit https://gitping.pages.dev for setup instructions.`;
+Visit https://gitping.vlvt.sh for setup instructions.`;
 
     await this.telegram.sendMessage(chatId, helpMessage, {
       parse_mode: 'Markdown'
@@ -220,7 +220,7 @@ Visit https://gitping.pages.dev for setup instructions.`;
     if (!githubUserId) {
       await this.telegram.sendMessage(
         chatId,
-        '❌ *Account not verified*\n\nPlease verify your GitHub account first.\n\nVisit: https://gitping.pages.dev',
+        '❌ *Account not verified*\n\nPlease verify your GitHub account first.\n\nVisit: https://gitping.vlvt.sh',
         { parse_mode: 'Markdown' }
       );
       return;
@@ -338,7 +338,7 @@ You'll receive notifications when new releases are published!`;
     if (!githubUserId) {
       await this.telegram.sendMessage(
         chatId,
-        '❌ *Account not verified*\n\nPlease verify your GitHub account first.\n\nVisit: https://gitping.pages.dev',
+        '❌ *Account not verified*\n\nPlease verify your GitHub account first.\n\nVisit: https://gitping.vlvt.sh',
         { parse_mode: 'Markdown' }
       );
       return;
@@ -350,7 +350,7 @@ You'll receive notifications when new releases are published!`;
       if (subscriptions.length === 0) {
         await this.telegram.sendMessage(
           chatId,
-          '📭 You have no active subscriptions.\n\nUse `/subscribe owner/repo` to get started!\n\nYou can also manage subscriptions on the [web app](https://gitping.pages.dev).',
+          '📭 You have no active subscriptions.\n\nUse `/subscribe owner/repo` to get started!\n\nYou can also manage subscriptions on the [web app](https://gitping.vlvt.sh).',
           { parse_mode: 'Markdown' }
         );
         return;
@@ -374,7 +374,7 @@ You'll receive notifications when new releases are published!`;
             { text: '🔄 Refresh List', callback_data: 'action_list' }
           ],
           [
-            { text: '🌐 Web Dashboard', url: 'https://gitping.pages.dev' }
+            { text: '🌐 Web Dashboard', url: 'https://gitping.vlvt.sh' }
           ]
         ]
       };
@@ -401,7 +401,7 @@ You'll receive notifications when new releases are published!`;
     if (!githubUserId) {
       await this.telegram.sendMessage(
         chatId,
-        '❌ *Account not verified*\n\nPlease verify your GitHub account first.\n\nVisit: https://gitping.pages.dev',
+        '❌ *Account not verified*\n\nPlease verify your GitHub account first.\n\nVisit: https://gitping.vlvt.sh',
         { parse_mode: 'Markdown' }
       );
       return;

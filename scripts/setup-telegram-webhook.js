@@ -5,7 +5,7 @@
  */
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const WEBHOOK_URL = process.env.WEBHOOK_URL || 'https://gitping-api.modelarena.workers.dev/webhook/telegram';
+const WEBHOOK_URL = process.env.WEBHOOK_URL || 'https://gitping-api.vlvt.sh/webhook/telegram';
 
 async function setupWebhook() {
   if (!TELEGRAM_BOT_TOKEN) {

@@ -81,7 +81,7 @@ export default function AddRepositoryModal({ isOpen, onClose, onSuccess, channel
       }
 
       const token = localStorage.getItem('auth_token')
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.modelarena.workers.dev'
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.vlvt.sh'
 
       const response = await fetch(`${apiUrl}/subscriptions`, {
         method: 'POST',

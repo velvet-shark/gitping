@@ -32,7 +32,7 @@ function CallbackContent() {
         localStorage.setItem('auth_token', decodeURIComponent(token))
 
         // Fetch user data with the token to verify it's valid
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.modelarena.workers.dev'
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.vlvt.sh'
         const response = await fetch(`${apiUrl}/auth/me`, {
           headers: { 'Authorization': `Bearer ${decodeURIComponent(token)}` }
         })

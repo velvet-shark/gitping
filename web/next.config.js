@@ -6,7 +6,7 @@ const nextConfig = {
     unoptimized: true
   },
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.modelarena.workers.dev'
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.vlvt.sh'
   }
 }
 

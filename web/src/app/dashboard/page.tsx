@@ -70,7 +70,7 @@ export default function DashboardPage() {
         return
       }
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.modelarena.workers.dev'
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.vlvt.sh'
       
       // Fetch current user data, subscriptions, and channels
       const [userResponse, subscriptionsResponse, channelsResponse] = await Promise.all([
@@ -133,7 +133,7 @@ export default function DashboardPage() {
   const generateConnectionCode = async () => {
     try {
       const token = localStorage.getItem('auth_token')
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.modelarena.workers.dev'
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.vlvt.sh'
       
       const response = await fetch(`${apiUrl}/auth/connection-code`, {
         method: 'POST',
@@ -153,7 +153,7 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     try {
       const token = localStorage.getItem('auth_token')
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.modelarena.workers.dev'
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.vlvt.sh'
       
       // Call logout endpoint to clear server-side session
       await fetch(`${apiUrl}/auth/logout`, {
@@ -207,7 +207,7 @@ export default function DashboardPage() {
 
     try {
       const token = localStorage.getItem('auth_token')
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.modelarena.workers.dev'
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.vlvt.sh'
 
       const response = await fetch(`${apiUrl}/subscriptions/${subscriptionId}`, {
         method: 'DELETE',
@@ -239,7 +239,7 @@ export default function DashboardPage() {
 
     try {
       const token = localStorage.getItem('auth_token')
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.modelarena.workers.dev'
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://gitping-api.vlvt.sh'
 
       const response = await fetch(`${apiUrl}/channels/${channelId}`, {
         method: 'DELETE',

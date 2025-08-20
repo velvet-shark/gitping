@@ -14,7 +14,7 @@ export default {
       // CORS headers for web clients
       const origin = request.headers.get('Origin') || '*';
       const corsHeaders = {
-        'Access-Control-Allow-Origin': origin.includes('gitping.pages.dev') || origin.includes('localhost') ? origin : '*',
+        'Access-Control-Allow-Origin': origin.includes('vlvt.sh') || origin.includes('localhost') ? origin : '*',
         'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         'Access-Control-Allow-Credentials': 'true',
@@ -68,7 +68,7 @@ export default {
 
         if (!code) {
           // Redirect to frontend login with error
-          const frontendUrl = env.FRONTEND_URL || 'https://gitping.pages.dev';
+          const frontendUrl = env.FRONTEND_URL || 'https://gitping.vlvt.sh';
           
           return new Response(null, {
             status: 302,
@@ -114,7 +114,7 @@ export default {
           const token = await auth.createJWT(user.id, sessionId);
 
           // Redirect to frontend auth callback with token
-          const frontendUrl = env.FRONTEND_URL || 'https://gitping.pages.dev';
+          const frontendUrl = env.FRONTEND_URL || 'https://gitping.vlvt.sh';
           
           return new Response(null, {
             status: 302,
@@ -126,7 +126,7 @@ export default {
 
         } catch (error) {
           // Redirect to frontend login with error message
-          const frontendUrl = env.FRONTEND_URL || 'https://gitping.pages.dev';
+          const frontendUrl = env.FRONTEND_URL || 'https://gitping.vlvt.sh';
           const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
           
           return new Response(null, {

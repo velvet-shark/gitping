@@ -31,7 +31,7 @@ npm run export
 Create a `.env.local` file:
 
 ```bash
-NEXT_PUBLIC_API_URL=https://gitping-api.modelarena.workers.dev
+NEXT_PUBLIC_API_URL=https://gitping-api.vlvt.sh
 ```
 
 ## Deployment to Cloudflare Pages

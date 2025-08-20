@@ -47,7 +47,7 @@ console.log('2. Click "Create Application" → "Upload assets"');
 console.log(`3. Upload all contents from: ${outDir}`);
 console.log('4. Set project name: gitping');
 console.log('5. Add environment variable:');
-console.log('   NEXT_PUBLIC_API_URL = https://gitping-api.modelarena.workers.dev');
+console.log('   NEXT_PUBLIC_API_URL = https://gitping-api.vlvt.sh');
 
 console.log('\n📋 Files ready for upload:');
 const listFiles = (dir, prefix = '') => {

@@ -121,6 +121,23 @@ npm run deploy           # Deploy both workers
 npm run deploy:prod      # Deploy to production
 ```
 
+### Frontend Deployment (Cloudflare Pages)
+
+#### Build Settings
+- **Framework preset**: `Next.js (Static HTML Export)`
+- **Build command**: `cd web && npm run build`
+- **Build output directory**: `web/out`
+- **Node.js version**: `18` or `20`
+
+#### Environment Variables
+Add in Cloudflare Pages settings:
+- **NEXT_PUBLIC_API_URL**: `your_api_url`
+
+#### GitHub OAuth Configuration
+Update your GitHub OAuth app with:
+- **Homepage URL**: `your_url`
+- **Authorization callback URL**: `your_api_url`
+
 ### Monitoring
 ```bash
 npm run logs:api         # Tail API worker logs
