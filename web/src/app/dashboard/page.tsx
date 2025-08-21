@@ -497,7 +497,16 @@ export default function DashboardPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="font-medium text-gray-900">{sub.repo}</h3>
+                          <h3 className="font-medium text-gray-900">
+                            <a 
+                              href={`https://github.com/${sub.repo}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                            >
+                              {sub.repo}
+                            </a>
+                          </h3>
                           <div className="flex space-x-1">
                             {sub.channels.map((channel, index) => (
                               <span 
