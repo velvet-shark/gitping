@@ -205,7 +205,7 @@ async function sendReleaseNotifications(
         try {
           if (channel.channel_type === 'telegram' && channel.channel_identifier) {
             const message = telegram.formatReleaseMessage(repo.owner, repo.name, release);
-            await telegram.sendMessage(channel.channel_identifier, message, { parse_mode: 'Markdown' });
+            await telegram.sendMessage(channel.channel_identifier, message, { parse_mode: 'HTML' });
             await db.updateNotificationStatus(notificationId, 'sent');
           }
         } catch (error) {

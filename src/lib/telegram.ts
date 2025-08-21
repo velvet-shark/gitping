@@ -60,10 +60,10 @@ export class TelegramAPI {
     release: GitHubRelease
   ): string {
     const title = release.name || release.tag_name;
-    let message = `*${owner}/${repo}* — new release ${release.tag_name}\n`;
+    let message = `<b>${this.escapeHtml(owner)}/${this.escapeHtml(repo)}</b> — new release ${this.escapeHtml(release.tag_name)}\n`;
     
     if (title && title !== release.tag_name) {
-      message += `• ${title}\n`;
+      message += `• ${this.escapeHtml(title)}\n`;
     }
 
     if (release.body && release.body.trim()) {
@@ -72,12 +72,21 @@ export class TelegramAPI {
       const truncatedBody = body.length > 200 
         ? body.substring(0, 200) + '...' 
         : body;
-      message += `\n${truncatedBody}\n`;
+      message += `\n${this.escapeHtml(truncatedBody)}\n`;
     }
 
     message += `\n${release.html_url}`;
     
     return message;
+  }
+
+  private escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   formatCommitMessage(
@@ -90,7 +99,7 @@ export class TelegramAPI {
     const firstCommit = commits[0];
     const branch = 'main'; // TODO: get actual branch from context
     
-    let message = `*${owner}/${repo}* — ${count} commit${count > 1 ? 's' : ''} to ${branch}\n`;
+    let message = `<b>${this.escapeHtml(owner)}/${this.escapeHtml(repo)}</b> — ${count} commit${count > 1 ? 's' : ''} to ${this.escapeHtml(branch)}\n`;
     
     // Show first few commits
     const maxCommitsToShow = 3;
@@ -103,7 +112,7 @@ export class TelegramAPI {
         ? shortMessage.substring(0, 60) + '...' 
         : shortMessage;
       
-      message += `• ${truncatedMessage} (${shortSha})\n`;
+      message += `• ${this.escapeHtml(truncatedMessage)} (${this.escapeHtml(shortSha)})\n`;
     }
     
     if (count > maxCommitsToShow) {
@@ -132,7 +141,7 @@ export class TelegramAPI {
     const endTime = timeWindow.end.toISOString().substring(11, 16);
     const date = timeWindow.start.toISOString().substring(0, 10);
     
-    let message = `*${owner}/${repo}* — ${count} commit${count > 1 ? 's' : ''} to ${branch} (${startTime}–${endTime} UTC ${date})\n`;
+    let message = `<b>${this.escapeHtml(owner)}/${this.escapeHtml(repo)}</b> — ${count} commit${count > 1 ? 's' : ''} to ${this.escapeHtml(branch)} (${startTime}–${endTime} UTC ${date})\n`;
     
     // Show first few commits
     const maxCommitsToShow = 5;
@@ -144,7 +153,7 @@ export class TelegramAPI {
         ? shortMessage.substring(0, 50) + '...' 
         : shortMessage;
       
-      message += `- ${truncatedMessage}\n`;
+      message += `- ${this.escapeHtml(truncatedMessage)}\n`;
     }
     
     if (count > maxCommitsToShow) {
