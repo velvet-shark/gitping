@@ -14,7 +14,7 @@ export default {
       // CORS headers for web clients
       const origin = request.headers.get('Origin') || '*';
       const corsHeaders = {
-        'Access-Control-Allow-Origin': origin.includes('vlvt.sh') || origin.includes('localhost') ? origin : '*',
+        'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         'Access-Control-Allow-Credentials': 'true',
@@ -498,34 +498,47 @@ export default {
 
       // DELETE /subscriptions/:id - Delete a subscription
       if (request.method === 'DELETE' && url.pathname.startsWith('/subscriptions/')) {
-        const subscriptionId = parseInt(url.pathname.split('/')[2]);
-        const userIdParam = url.searchParams.get('user_id');
+        try {
+          const subscriptionId = parseInt(url.pathname.split('/')[2]);
+          const userIdParam = url.searchParams.get('user_id');
 
-        // Authenticate user
-        const authResult = await authenticateUser(request, userIdParam);
-        if (!authResult.success) {
-          return new Response(JSON.stringify({ error: authResult.error }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
-        }
+          // Authenticate user
+          const authResult = await authenticateUser(request, userIdParam);
+          if (!authResult.success) {
+            return new Response(JSON.stringify({ error: authResult.error }), {
+              status: 401,
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            });
+          }
 
-        if (isNaN(subscriptionId)) {
-          return new Response(JSON.stringify({ error: 'Invalid subscription ID' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
-        }
+          if (isNaN(subscriptionId)) {
+            return new Response(JSON.stringify({ error: 'Invalid subscription ID' }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            });
+          }
 
-        const deleted = await db.deleteSubscription(subscriptionId, authResult.userId!);
-        
-        if (deleted) {
-          return new Response(JSON.stringify({ message: 'Subscription deleted' }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
-        } else {
-          return new Response(JSON.stringify({ error: 'Subscription not found' }), {
-            status: 404,
+          console.log(`Deleting subscription ${subscriptionId} for user ${authResult.userId}`);
+          const deleted = await db.deleteSubscription(subscriptionId, authResult.userId!);
+          console.log(`Delete result: ${deleted}`);
+          
+          if (deleted) {
+            return new Response(JSON.stringify({ message: 'Subscription deleted' }), {
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            });
+          } else {
+            return new Response(JSON.stringify({ error: 'Subscription not found or you do not have permission to delete it' }), {
+              status: 404,
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            });
+          }
+        } catch (deleteError) {
+          console.error('Error in DELETE /subscriptions:', deleteError);
+          return new Response(JSON.stringify({ 
+            error: 'Failed to delete subscription',
+            details: deleteError instanceof Error ? deleteError.message : 'Unknown error'
+          }), {
+            status: 500,
             headers: { 'Content-Type': 'application/json', ...corsHeaders }
           });
         }
@@ -629,13 +642,18 @@ export default {
 
     } catch (error) {
       console.error('API Error:', error);
-      
+      const corsHeaders = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Credentials': 'true',
+      };
       return new Response(JSON.stringify({ 
         error: 'Internal server error',
         message: error instanceof Error ? error.message : 'Unknown error'
       }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
       });
     }
   }

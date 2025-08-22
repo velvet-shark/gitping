@@ -214,6 +214,8 @@ export default function DashboardPage() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://gitping-api.vlvt.sh";
 
       console.log("Deleting subscription:", subscriptionId, "with token:", token ? "present" : "missing");
+      console.log("API URL:", apiUrl);
+      console.log("Full request URL:", `${apiUrl}/subscriptions/${subscriptionId}`);
 
       const response = await fetch(`${apiUrl}/subscriptions/${subscriptionId}`, {
         method: "DELETE",
@@ -241,7 +243,16 @@ export default function DashboardPage() {
       // Success - subscription is already removed from UI
     } catch (error) {
       console.error("Failed to delete subscription:", error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      
+      let errorMessage = "Unknown error";
+      if (error instanceof Error) {
+        if (error.message === "Failed to fetch") {
+          errorMessage = `Network error: Cannot reach API at ${process.env.NEXT_PUBLIC_API_URL || "https://gitping-api.vlvt.sh"}. Please check your internet connection.`;
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       alert(`Failed to delete subscription: ${errorMessage}. Please try again.`);
       // Rollback optimistic update
       setSubscriptions(originalSubscriptions);
