@@ -192,12 +192,24 @@ export class DatabaseService {
   }
 
   async deleteSubscription(id: number, userId: string): Promise<boolean> {
-    const result = await this.env.DB
-      .prepare('DELETE FROM subscriptions WHERE id = ? AND user_id = ?')
-      .bind(id, userId)
-      .run();
+    try {
+      // First, delete related subscription_channels records
+      await this.env.DB
+        .prepare('DELETE FROM subscription_channels WHERE subscription_id = ?')
+        .bind(id)
+        .run();
 
-    return result.meta.changes > 0;
+      // Then delete the subscription
+      const result = await this.env.DB
+        .prepare('DELETE FROM subscriptions WHERE id = ? AND user_id = ?')
+        .bind(id, userId)
+        .run();
+
+      return result.meta.changes > 0;
+    } catch (error) {
+      console.error('Error deleting subscription:', error);
+      throw error;
+    }
   }
 
   // Events
