@@ -301,8 +301,8 @@ export default function DashboardPage() {
       <header className="bg-white brutal-border-thick brutal-shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-4 sm:py-6">
-            {/* Mobile: Logo and user info stacked */}
-            <div className="flex flex-col space-y-4 sm:hidden">
+            {/* Mobile: Logo + Sign out on first row, Avatar + name on second row */}
+            <div className="flex flex-col space-y-3 sm:hidden">
               <div className="flex items-center justify-between">
                 <Link href="/" className="flex items-center space-x-3 brutal-wiggle">
                   <Image
@@ -314,14 +314,16 @@ export default function DashboardPage() {
                   />
                   <span className="text-xl font-bold text-black">GitPing</span>
                 </Link>
+                <button onClick={handleLogout} className="flex items-center space-x-2 text-gray-700 hover:text-black font-medium">
+                  <LogOut className="h-4 w-4" />
+                  <span>Sign out</span>
+                </button>
               </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <img src={user.avatar_url} alt={user.name} className="h-10 w-10 rounded-full brutal-border" />
-                  <div>
-                    <h1 className="text-base font-medium text-black">{user.name}</h1>
-                    <p className="text-xs text-gray-600">@{user.github_username}</p>
-                  </div>
+              <div className="flex items-center space-x-3">
+                <img src={user.avatar_url} alt={user.name} className="h-10 w-10 rounded-full brutal-border" />
+                <div>
+                  <h1 className="text-base font-medium text-black">{user.name}</h1>
+                  <p className="text-xs text-gray-600">@{user.github_username}</p>
                 </div>
               </div>
             </div>
@@ -368,30 +370,6 @@ export default function DashboardPage() {
                   <span>Sign out</span>
                 </button>
               </div>
-            </div>
-            
-            {/* Mobile: Channel info and actions */}
-            <div className="flex justify-between items-center mt-4 sm:hidden">
-              {channels.length > 0 ? (
-                <div className="flex items-center space-x-2 bg-brutal-green brutal-border px-3 py-2 brutal-shadow">
-                  <MessageSquare className="h-4 w-4 text-black" />
-                  <span className="text-xs font-medium text-black">
-                    {channels.length} channel{channels.length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-              ) : (
-                <button
-                  onClick={generateConnectionCode}
-                  className="flex items-center space-x-2 bg-brutal-green text-black brutal-button brutal-pulse text-sm"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  <span>Add channel</span>
-                </button>
-              )}
-              <button onClick={handleLogout} className="flex items-center space-x-2 text-gray-700 hover:text-black font-medium">
-                <LogOut className="h-4 w-4" />
-                <span>Sign out</span>
-              </button>
             </div>
           </div>
         </div>
@@ -549,10 +527,11 @@ Close
               <div className="space-y-3 sm:space-y-4">
                 {subscriptions.map((sub) => (
                   <div key={sub.id} className="p-4 bg-brutal-green brutal-border mb-2 brutal-tilt hover:brutal-tilt-right transition-transform">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-bold text-black mb-2">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        {/* Repository name and channel badges */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                          <h3 className="text-lg font-bold text-black">
                             <a
                               href={`https://github.com/${sub.repo}`}
                               target="_blank"
@@ -562,7 +541,7 @@ Close
                               {sub.repo}
                             </a>
                           </h3>
-                          <div className="flex space-x-1">
+                          <div className="flex flex-wrap gap-1">
                             {sub.channels.map((channel, index) => (
                               <span
                                 key={index}
@@ -573,23 +552,43 @@ Close
                             ))}
                           </div>
                         </div>
-                        <p className="text-xs text-black font-medium mb-1">{sub.kind} notifications</p>
-                        <div className="text-xs text-black font-medium mb-1">
-                          Subscribed {formatDateWithRelative(sub.created_at)}
+                        
+                        {/* Subscription details */}
+                        <div className="space-y-2">
+                          <p className="text-xs text-black font-medium">{sub.kind} notifications</p>
+                          <p className="text-xs text-black font-medium">
+                            Subscribed {formatDateWithRelative(sub.created_at)}
+                          </p>
+                          
+                          {/* Release information */}
+                          {sub.last_release ? (
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-black font-medium">Last release:</span>
+                                <a 
+                                  href={sub.last_release.html_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="font-bold text-black hover:text-gray-700 underline bg-brutal-yellow-soft px-2 py-1 brutal-border text-sm"
+                                >
+                                  {sub.last_release.tag_name}
+                                </a>
+                              </div>
+                              <span className="hidden sm:inline text-black mx-2">•</span>
+                              <span className="font-bold bg-white px-2 py-1 brutal-border text-sm">
+                                {formatDateWithRelative(sub.last_release.published_at)}
+                              </span>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-black font-medium">No releases yet</p>
+                          )}
                         </div>
-                        {sub.last_release ? (
-                          <div className="text-sm text-black font-medium">
-                            Last release: <a href={sub.last_release.html_url} target="_blank" rel="noopener noreferrer" className="font-bold text-black hover:text-gray-700 underline bg-brutal-yellow-soft px-2 py-1 brutal-border">{sub.last_release.tag_name}</a>
-                            <span className="mx-2">•</span>
-                            <span className="font-bold bg-white px-2 py-1 brutal-border">{formatDateWithRelative(sub.last_release.published_at)}</span>
-                          </div>
-                        ) : (
-                          <div className="text-xs text-black font-medium">No releases yet</div>
-                        )}
                       </div>
+                      
+                      {/* Delete button */}
                       <button
                         onClick={() => handleDeleteSubscription(sub.id, sub.repo)}
-                        className="bg-red-500 text-white brutal-border p-2 brutal-shadow hover:transform hover:translate-x-1 hover:translate-y-1"
+                        className="bg-red-500 text-white brutal-border p-2 brutal-shadow hover:transform hover:translate-x-1 hover:translate-y-1 flex-shrink-0"
                         title="Delete subscription"
                       >
                         <Trash2 className="h-4 w-4" />
