@@ -87,6 +87,7 @@ export default function DashboardPage() {
       ]);
 
       if (!userResponse.ok) {
+        console.error("User authentication failed:", userResponse.status, await userResponse.text());
         // Token invalid, clear storage and redirect
         localStorage.removeItem("auth_token");
         localStorage.removeItem("user");
@@ -212,20 +213,36 @@ export default function DashboardPage() {
       const token = localStorage.getItem("auth_token");
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://gitping-api.vlvt.sh";
 
+      console.log("Deleting subscription:", subscriptionId, "with token:", token ? "present" : "missing");
+
       const response = await fetch(`${apiUrl}/subscriptions/${subscriptionId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
       });
 
+      console.log("Delete response status:", response.status);
+      
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData;
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          errorData = await response.json();
+        } else {
+          errorData = { error: `HTTP ${response.status}: ${await response.text()}` };
+        }
+        console.error("Delete subscription error:", errorData);
         throw new Error(errorData.error || "Failed to delete subscription");
       }
 
+      console.log("Subscription deleted successfully");
       // Success - subscription is already removed from UI
     } catch (error) {
       console.error("Failed to delete subscription:", error);
-      alert("Failed to delete subscription. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      alert(`Failed to delete subscription: ${errorMessage}. Please try again.`);
       // Rollback optimistic update
       setSubscriptions(originalSubscriptions);
     }
