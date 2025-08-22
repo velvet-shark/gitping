@@ -271,10 +271,12 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-brutal-light flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-700 mx-auto mb-4"></div>
-          <p className="text-gray-700 text-sm">Loading dashboard...</p>
+          <div className="bg-brutal-green brutal-border w-16 h-16 mx-auto mb-6 flex items-center justify-center brutal-shadow">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-4 border-black"></div>
+          </div>
+          <p className="text-black font-medium text-lg">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -282,10 +284,10 @@ export default function DashboardPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-700 text-sm mb-4">Please sign in to access your dashboard</p>
-          <Link href="/auth/login" className="bg-green-600 text-white px-4 py-2 border border-green-700 hover:bg-green-700 font-medium text-sm">
+      <div className="min-h-screen bg-brutal-light flex items-center justify-center">
+        <div className="text-center bg-white brutal-card p-8">
+          <p className="text-black font-medium text-lg mb-6">Please sign in to access your dashboard</p>
+          <Link href="/auth/login" className="bg-brutal-green text-black brutal-button">
             Sign in
           </Link>
         </div>
@@ -294,48 +296,48 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-brutal-yellow-soft">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
+      <header className="bg-white brutal-border-thick brutal-shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+          <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
-              <Link href="/" className="flex items-center space-x-3">
+              <Link href="/" className="flex items-center space-x-3 brutal-wiggle">
                 <Image
                   src="/gitping-logo.png"
                   alt="GitPing Logo"
-                  width={32}
-                  height={32}
-                  className="h-8 w-8 rounded-lg"
+                  width={40}
+                  height={40}
+                  className="h-10 w-10 rounded-lg brutal-border brutal-shadow"
                 />
-                <span className="text-lg font-semibold text-gray-900">GitPing</span>
+                <span className="text-xl font-bold text-black">GitPing</span>
               </Link>
-              <div className="border-l border-gray-300 h-6"></div>
-              <img src={user.avatar_url} alt={user.name} className="h-8 w-8 rounded-full" />
+              <div className="bg-black w-1 h-8"></div>
+              <img src={user.avatar_url} alt={user.name} className="h-10 w-10 rounded-full brutal-border" />
               <div>
-                <h1 className="text-base font-medium text-gray-900">{user.name}</h1>
+                <h1 className="text-base font-medium text-black">{user.name}</h1>
                 <p className="text-xs text-gray-600">@{user.github_username}</p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
               {channels.length > 0 ? (
-                <div className="flex items-center space-x-2 bg-green-50 text-green-700 px-3 py-1 border border-green-200">
-                  <MessageSquare className="h-3 w-3" />
-                  <span className="text-xs font-medium">
+                <div className="flex items-center space-x-2 bg-brutal-green brutal-border px-3 py-2 brutal-shadow">
+                  <MessageSquare className="h-4 w-4 text-black" />
+                  <span className="text-xs font-medium text-black">
                     {channels.length} channel{channels.length !== 1 ? "s" : ""}
                   </span>
                 </div>
               ) : (
                 <button
                   onClick={generateConnectionCode}
-                  className="flex items-center space-x-2 bg-green-600 text-white px-3 py-2 border border-green-700 hover:bg-green-700 transition-colors text-sm font-medium"
+                  className="flex items-center space-x-2 bg-brutal-green text-black brutal-button brutal-pulse"
                 >
-                  <MessageSquare className="h-3 w-3" />
+                  <MessageSquare className="h-4 w-4" />
                   <span>Add channel</span>
                 </button>
               )}
-              <button onClick={handleLogout} className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 text-sm">
-                <LogOut className="h-3 w-3" />
+              <button onClick={handleLogout} className="flex items-center space-x-2 text-gray-700 hover:text-black font-medium">
+                <LogOut className="h-4 w-4" />
                 <span>Sign out</span>
               </button>
             </div>
@@ -348,63 +350,63 @@ export default function DashboardPage() {
         {/* Connection Code Modal */}
         {showConnectionCode && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white border border-gray-200 p-6 max-w-md w-full mx-4">
-              <h3 className="text-base font-semibold text-gray-900 mb-4">Add Telegram channel</h3>
-              <p className="text-gray-700 text-sm mb-4">Send this verification code to the GitPing Telegram bot:</p>
-              <div className="bg-gray-50 border border-gray-200 p-4 mb-4">
+            <div className="bg-white brutal-card p-8 max-w-md w-full mx-4">
+              <h3 className="text-lg font-black text-black mb-4 brutal-text text-brutal-shadow">ADD TELEGRAM CHANNEL!</h3>
+              <p className="text-black font-bold text-sm mb-4">SEND THIS VERIFICATION CODE TO THE GITPING TELEGRAM BOT:</p>
+              <div className="bg-brutal-yellow-soft brutal-border p-4 mb-4 brutal-shadow">
                 <div className="flex items-center justify-between">
-                  <span className="text-xl font-mono font-bold text-gray-900">{connectionCode}</span>
+                  <span className="text-2xl font-mono font-black text-black">{connectionCode}</span>
                   <button
                     onClick={copyConnectionCode}
-                    className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+                    className="bg-black text-white brutal-border p-2 brutal-shadow hover:transform hover:translate-x-1 hover:translate-y-1"
                     title="Copy code"
                   >
                     <Copy className="h-4 w-4" />
                   </button>
                 </div>
               </div>
-              <div className="text-xs text-gray-600 mb-4 space-y-2">
-                <p>1. Open Telegram and start the GitPing bot:</p>
+              <div className="text-xs text-black font-bold mb-4 space-y-2">
+                <p>1. OPEN TELEGRAM AND START THE GITPING BOT:</p>
                 <p className="ml-4">
                   <a
                     href="https://t.me/gitping_notify_bot"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-green-600 hover:text-green-800 underline font-medium"
+                    className="text-black hover:text-gray-700 underline font-black"
                   >
-                    @gitping_notify_bot
+                    @GITPING_NOTIFY_BOT
                   </a>
                 </p>
-                <p>2. Send this verification command:</p>
+                <p>2. SEND THIS VERIFICATION COMMAND:</p>
                 <p className="ml-4">
-                  <code className="bg-gray-200 text-gray-800 px-1 font-mono">/verify {connectionCode}</code>
+                  <code className="bg-black text-white px-2 py-1 font-mono">/verify {connectionCode}</code>
                 </p>
-                <p>3. The code expires in 10 minutes</p>
+                <p>3. THE CODE EXPIRES IN 10 MINUTES!</p>
               </div>
               <button
                 onClick={() => {
                   setShowConnectionCode(false);
                   loadUserData(true); // Refresh to check if channel was added
                 }}
-                className="w-full bg-green-600 text-white px-4 py-2 border border-green-700 hover:bg-green-700 font-medium text-sm"
+                className="w-full bg-brutal-green text-black brutal-button px-4 py-3"
               >
-                Close
+                CLOSE!
               </button>
             </div>
           </div>
         )}
 
         {/* Channels */}
-        <div className="bg-white border border-gray-200 mb-6">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="bg-white brutal-card mb-6">
+          <div className="px-6 py-4 bg-brutal-pink brutal-border-thick">
             <div className="flex justify-between items-center">
-              <h2 className="text-base font-semibold text-gray-900">Notification channels ({channels.length})</h2>
+              <h2 className="text-lg font-black text-black brutal-text">NOTIFICATION CHANNELS ({channels.length})</h2>
               {!hasTelegramChannel() && (
                 <button
                   onClick={generateConnectionCode}
-                  className="flex items-center space-x-2 bg-green-600 text-white px-3 py-2 border border-green-700 hover:bg-green-700 transition-colors text-sm font-medium"
+                  className="flex items-center space-x-2 bg-brutal-green text-black brutal-button px-4 py-2 brutal-pulse"
                 >
-                  <Plus className="h-3 w-3" />
+                  <Plus className="h-4 w-4" />
                   <span>Add Telegram</span>
                 </button>
               )}
@@ -414,14 +416,16 @@ export default function DashboardPage() {
           <div className="p-6">
             {channels.length === 0 ? (
               <div className="text-center py-12">
-                <MessageSquare className="h-8 w-8 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-base font-medium text-gray-900 mb-2">No channels configured</h3>
-                <p className="text-gray-700 text-sm mb-6 max-w-md mx-auto">
-                  Add a notification channel to start receiving updates about your repositories.
+                <div className="bg-brutal-orange brutal-border w-16 h-16 mx-auto mb-6 flex items-center justify-center brutal-shadow">
+                  <MessageSquare className="h-8 w-8 text-black" />
+                </div>
+                <h3 className="text-lg font-black text-black mb-4 brutal-text">NO CHANNELS CONFIGURED!</h3>
+                <p className="text-black font-bold text-sm mb-6 max-w-md mx-auto">
+                  ADD A NOTIFICATION CHANNEL TO START RECEIVING UPDATES ABOUT YOUR REPOSITORIES!
                 </p>
                 <button
                   onClick={generateConnectionCode}
-                  className="bg-green-600 text-white px-4 py-2 border border-green-700 hover:bg-green-700 transition-colors font-medium text-sm"
+                  className="bg-brutal-green text-black brutal-button px-6 py-3 brutal-wiggle"
                 >
                   Add your first channel
                 </button>
@@ -429,25 +433,25 @@ export default function DashboardPage() {
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {channels.map((channel) => (
-                  <div key={channel.id} className="p-4 border border-gray-200">
+                  <div key={channel.id} className="p-4 bg-brutal-blue brutal-border mb-2 brutal-tilt hover:brutal-tilt-right transition-transform">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
-                          <MessageSquare className="h-3 w-3 text-green-600" />
-                          <span className="font-medium text-gray-900 text-sm">{channel.display_name || "Telegram"}</span>
-                          <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                            {channel.channel_type}
+                          <MessageSquare className="h-4 w-4 text-black" />
+                          <span className="font-black text-black text-sm">{channel.display_name || "TELEGRAM"}</span>
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-black bg-white text-black brutal-border">
+                            {channel.channel_type.toUpperCase()}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-600 mb-1">Added {formatDateWithRelative(channel.created_at)}</p>
-                        <p className="text-xs text-gray-500">Verified {formatDateTime(channel.verified_at)}</p>
+                        <p className="text-xs text-black font-bold mb-1">ADDED {formatDateWithRelative(channel.created_at)}</p>
+                        <p className="text-xs text-black font-bold">VERIFIED {formatDateTime(channel.verified_at)}</p>
                       </div>
                       <button
                         onClick={() => handleDeleteChannel(channel.id, channel.display_name || "Telegram")}
-                        className="text-red-500 hover:text-red-700 ml-2"
+                        className="bg-red-500 text-white brutal-border p-2 brutal-shadow hover:transform hover:translate-x-1 hover:translate-y-1"
                         title="Remove channel"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -458,16 +462,16 @@ export default function DashboardPage() {
         </div>
 
         {/* Subscriptions */}
-        <div className="bg-white border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="bg-white brutal-card">
+          <div className="px-6 py-4 bg-brutal-purple brutal-border-thick">
             <div className="flex justify-between items-center">
-              <h2 className="text-base font-semibold text-gray-900">Your subscriptions ({subscriptions.length})</h2>
+              <h2 className="text-lg font-black text-black brutal-text">YOUR SUBSCRIPTIONS ({subscriptions.length})</h2>
               <button
                 onClick={handleAddRepository}
-                className="flex items-center space-x-2 bg-green-600 text-white px-3 py-2 border border-green-700 hover:bg-green-700 transition-colors text-sm font-medium"
+                className="flex items-center space-x-2 bg-brutal-green text-black brutal-button px-4 py-2"
               >
-                <Plus className="h-3 w-3" />
-                <span>Add repository</span>
+                <Plus className="h-4 w-4" />
+                <span>ADD REPOSITORY!</span>
               </button>
             </div>
           </div>
@@ -475,14 +479,16 @@ export default function DashboardPage() {
           <div className="p-6">
             {subscriptions.length === 0 ? (
               <div className="text-center py-12">
-                <Bell className="h-8 w-8 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-base font-medium text-gray-900 mb-2">No subscriptions yet</h3>
-                <p className="text-gray-700 text-sm mb-6 max-w-md mx-auto">
-                  Start by subscribing to repositories you want to track for new releases.
+                <div className="bg-brutal-orange brutal-border w-16 h-16 mx-auto mb-6 flex items-center justify-center brutal-shadow">
+                  <Bell className="h-8 w-8 text-black" />
+                </div>
+                <h3 className="text-lg font-black text-black mb-4 brutal-text">NO SUBSCRIPTIONS YET!</h3>
+                <p className="text-black font-bold text-sm mb-6 max-w-md mx-auto">
+                  START BY SUBSCRIBING TO REPOSITORIES YOU WANT TO TRACK FOR NEW RELEASES!
                 </p>
                 <button
                   onClick={handleAddRepository}
-                  className="bg-green-600 text-white px-4 py-2 border border-green-700 hover:bg-green-700 transition-colors font-medium text-sm"
+                  className="bg-brutal-green text-black brutal-button px-6 py-3 brutal-wiggle"
                 >
                   Subscribe to your first repository
                 </button>
@@ -490,16 +496,16 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-4">
                 {subscriptions.map((sub) => (
-                  <div key={sub.id} className="p-4 border border-gray-200">
+                  <div key={sub.id} className="p-4 bg-brutal-green brutal-border mb-2 brutal-tilt hover:brutal-tilt-right transition-transform">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="font-medium text-gray-900 text-sm">
+                          <h3 className="font-black text-black text-sm">
                             <a
                               href={`https://github.com/${sub.repo}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-green-600 hover:text-green-800 hover:underline transition-colors"
+                              className="text-black hover:text-gray-700 hover:underline transition-colors"
                             >
                               {sub.repo}
                             </a>
@@ -508,33 +514,33 @@ export default function DashboardPage() {
                             {sub.channels.map((channel, index) => (
                               <span
                                 key={index}
-                                className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-50 text-green-700 border border-green-200"
+                                className="inline-flex items-center px-2 py-1 text-xs font-black bg-white text-black brutal-border"
                               >
-                                Telegram
+                                TELEGRAM
                               </span>
                             ))}
                           </div>
                         </div>
-                        <p className="text-xs text-gray-600 mb-1">{sub.kind} notifications</p>
-                        <div className="text-xs text-gray-500 mb-1">
-                          Subscribed {formatDateWithRelative(sub.created_at)}
+                        <p className="text-xs text-black font-bold mb-1">{sub.kind.toUpperCase()} NOTIFICATIONS</p>
+                        <div className="text-xs text-black font-bold mb-1">
+                          SUBSCRIBED {formatDateWithRelative(sub.created_at)}
                         </div>
                         {sub.last_release ? (
-                          <div className="text-xs text-gray-500">
-                            Last release: <span className="font-medium">{sub.last_release.tag_name}</span>
+                          <div className="text-xs text-black font-bold">
+                            LAST RELEASE: <span className="font-black">{sub.last_release.tag_name}</span>
                             <span className="mx-2">•</span>
                             {formatDateWithRelative(sub.last_release.published_at)}
                           </div>
                         ) : (
-                          <div className="text-xs text-gray-400">No releases yet</div>
+                          <div className="text-xs text-black font-bold">NO RELEASES YET</div>
                         )}
                       </div>
                       <button
                         onClick={() => handleDeleteSubscription(sub.id, sub.repo)}
-                        className="text-red-500 hover:text-red-700 ml-4"
+                        className="bg-red-500 text-white brutal-border p-2 brutal-shadow hover:transform hover:translate-x-1 hover:translate-y-1"
                         title="Delete subscription"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>

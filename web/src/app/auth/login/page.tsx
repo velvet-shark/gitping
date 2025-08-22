@@ -42,14 +42,14 @@ function LoginPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+    <div className="min-h-screen bg-brutal-pink flex flex-col">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <header className="bg-white brutal-border-thick brutal-shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center py-6">
-            <Link href="/" className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
+            <Link href="/" className="flex items-center space-x-2 text-black hover:text-gray-700 font-medium brutal-wiggle">
               <ArrowLeft className="h-5 w-5" />
-              <span>Back to Home</span>
+              <span>Back to home</span>
             </Link>
           </div>
         </div>
@@ -57,24 +57,24 @@ function LoginPageContent() {
 
       {/* Login Form */}
       <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
+        <div className="max-w-md w-full bg-white brutal-card p-10 brutal-float">
           <div className="text-center mb-8">
-            <div className="flex justify-center mb-4">
+            <div className="flex justify-center mb-6">
               <Image
                 src="/gitping-logo.png"
                 alt="GitPing Logo"
-                width={48}
-                height={48}
-                className="h-14 w-14 rounded-lg"
+                width={64}
+                height={64}
+                className="h-16 w-16 rounded-lg brutal-border brutal-shadow brutal-bounce"
               />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Sign in to GitPing</h1>
-            <p className="text-gray-600">Connect your GitHub account to start tracking releases</p>
+            <h1 className="text-2xl font-bold text-black mb-4">Sign in to GitPing</h1>
+            <p className="text-gray-700 text-sm">Connect your GitHub account to start tracking releases</p>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600">{error}</p>
+            <div className="mb-6 p-4 bg-red-500 brutal-border brutal-shadow">
+              <p className="text-sm text-white font-bold">{error}</p>
             </div>
           )}
 
@@ -82,32 +82,32 @@ function LoginPageContent() {
             onClick={handleGitHubLogin}
             disabled={loading}
             className={`
-              w-full flex items-center justify-center space-x-2 px-4 py-3 border border-gray-900 text-white bg-gray-900 hover:bg-gray-800 hover:border-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors font-medium text-sm
+              w-full flex items-center justify-center space-x-3 bg-black text-white brutal-button ${!loading ? 'brutal-pulse' : ''}
               ${loading ? "opacity-50 cursor-not-allowed" : ""}
             `}
           >
-            <Github className="h-4 w-4" />
+            <Github className="h-5 w-5" />
             <span>{loading ? "Connecting..." : "Sign in with GitHub"}</span>
           </button>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-500">GitPing only accesses public repository information.</p>
+            <p className="text-xs text-gray-600">GitPing only accesses public repository information</p>
           </div>
 
-          <div className="mt-8 border-t border-gray-200 pt-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">What you'll get access to:</h3>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li className="flex items-center space-x-2">
-                <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+          <div className="mt-8 bg-brutal-yellow-soft p-4 brutal-border brutal-shadow">
+            <h3 className="text-sm font-bold text-black mb-4">What you'll get:</h3>
+            <ul className="space-y-3 text-sm text-gray-700">
+              <li className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-black mt-2 flex-shrink-0"></div>
                 <span>Subscribe to any public repository</span>
               </li>
-              <li className="flex items-center space-x-2">
-                <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+              <li className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-black mt-2 flex-shrink-0"></div>
                 <span>Real-time release notifications</span>
               </li>
-              <li className="flex items-center space-x-2">
-                <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                <span>Dashboard to manage all your subscriptions</span>
+              <li className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-black mt-2 flex-shrink-0"></div>
+                <span>Dashboard to manage subscriptions</span>
               </li>
             </ul>
           </div>
