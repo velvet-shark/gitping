@@ -193,13 +193,19 @@ export class DatabaseService {
 
   async deleteSubscription(id: number, userId: string): Promise<boolean> {
     try {
-      // First, delete related subscription_channels records
+      // First, delete related notifications
+      await this.env.DB
+        .prepare('DELETE FROM notifications WHERE subscription_id = ?')
+        .bind(id)
+        .run();
+
+      // Then, delete related subscription_channels records
       await this.env.DB
         .prepare('DELETE FROM subscription_channels WHERE subscription_id = ?')
         .bind(id)
         .run();
 
-      // Then delete the subscription
+      // Finally, delete the subscription
       const result = await this.env.DB
         .prepare('DELETE FROM subscriptions WHERE id = ? AND user_id = ?')
         .bind(id, userId)
