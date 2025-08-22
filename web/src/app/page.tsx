@@ -1,23 +1,30 @@
-import Link from 'next/link'
-import { GitBranch, Bell, Zap, Shield, Github } from 'lucide-react'
+import Link from "next/link";
+import Image from "next/image";
+import { GitBranch, Bell, Zap, Shield, Github } from "lucide-react";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-2">
-              <GitBranch className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900">GitPing</span>
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-3">
+              <Image
+                src="/gitping-logo.png"
+                alt="GitPing Logo"
+                width={32}
+                height={32}
+                className="h-8 w-8 rounded-lg"
+              />
+              <span className="text-xl font-semibold text-gray-900">GitPing</span>
             </div>
-            <div className="flex items-center space-x-4">
-              <Link 
+            <div className="flex items-center space-x-3">
+              <Link
                 href="/auth/login"
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                className="bg-green-600 text-white px-4 py-2 border border-green-700 hover:bg-green-700 transition-colors font-medium text-sm"
               >
-                Sign In with GitHub
+                Sign in
               </Link>
             </div>
           </div>
@@ -25,126 +32,108 @@ export default function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center">
-          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-            Never Miss a 
-            <span className="text-blue-600"> Release</span> Again
+          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+            Never miss a <span className="text-green-600">release</span>
           </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+          <p className="text-xl text-gray-700 mb-8 max-w-2xl mx-auto leading-relaxed">
             Get instant notifications when your favorite GitHub repositories release new versions. 
             Stay updated on the tools and libraries you depend on.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link 
+            <Link
               href="/auth/login"
-              className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              className="bg-green-600 text-white px-6 py-3 border border-green-700 hover:bg-green-700 transition-colors flex items-center space-x-2 font-medium"
             >
-              <Github className="h-5 w-5" />
-              <span>Get Started with GitHub</span>
+              <Github className="h-4 w-4" />
+              <span>Sign up for free</span>
             </Link>
-            <p className="text-sm text-gray-500">
-              Free forever • No credit card required
-            </p>
+            <p className="text-sm text-gray-600">Free forever • No credit card required</p>
           </div>
         </div>
 
         {/* Features */}
         <div className="mt-20 grid md:grid-cols-3 gap-8">
-          <div className="text-center p-6 bg-white rounded-xl shadow-lg">
-            <Bell className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Real-time Notifications</h3>
-            <p className="text-gray-600">
-              Get notified instantly via Telegram when new releases are published. 
-              No delays, no missed updates.
+          <div className="p-6 bg-white border border-gray-200">
+            <Bell className="h-8 w-8 text-green-600 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Real-time notifications</h3>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              Get notified instantly via Telegram when new releases are published. No delays, no missed updates.
             </p>
           </div>
-          <div className="text-center p-6 bg-white rounded-xl shadow-lg">
-            <Zap className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Smart Filters</h3>
-            <p className="text-gray-600">
-              Control what you want to hear about. Skip pre-releases, 
-              filter by version patterns, and customize your preferences.
+          <div className="p-6 bg-white border border-gray-200">
+            <Zap className="h-8 w-8 text-green-600 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Smart filters</h3>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              Control what you want to hear about. Skip pre-releases, filter by version patterns, and customize your preferences.
             </p>
           </div>
-          <div className="text-center p-6 bg-white rounded-xl shadow-lg">
-            <Shield className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Secure & Private</h3>
-            <p className="text-gray-600">
-              Built on Cloudflare's global network. Your data is encrypted, 
-              and we never store your GitHub tokens.
+          <div className="p-6 bg-white border border-gray-200">
+            <Shield className="h-8 w-8 text-green-600 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Secure & private</h3>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              Built on Cloudflare's global network. Your data is encrypted, and we never store your GitHub tokens.
             </p>
           </div>
         </div>
 
         {/* How it works */}
         <div className="mt-20">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
-            How GitPing Works
-          </h2>
+          <h2 className="text-2xl font-bold text-center text-gray-900 mb-12">How it works</h2>
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-blue-600">1</span>
+              <div className="bg-green-100 border border-green-200 w-12 h-12 flex items-center justify-center mx-auto mb-4">
+                <span className="text-lg font-bold text-green-700">1</span>
               </div>
-              <h3 className="text-lg font-semibold mb-2">Connect GitHub</h3>
-              <p className="text-gray-600">
-                Sign in with your GitHub account to access public repositories
-              </p>
+              <h3 className="text-base font-semibold mb-2 text-gray-900">Connect GitHub</h3>
+              <p className="text-gray-700 text-sm">Sign in with your GitHub account to access public repositories</p>
             </div>
             <div className="text-center">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-blue-600">2</span>
+              <div className="bg-green-100 border border-green-200 w-12 h-12 flex items-center justify-center mx-auto mb-4">
+                <span className="text-lg font-bold text-green-700">2</span>
               </div>
-              <h3 className="text-lg font-semibold mb-2">Subscribe to Repos</h3>
-              <p className="text-gray-600">
+              <h3 className="text-base font-semibold mb-2 text-gray-900">Subscribe to repos</h3>
+              <p className="text-gray-700 text-sm">
                 Add repositories you want to track and configure your notification preferences
               </p>
             </div>
             <div className="text-center">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-blue-600">3</span>
+              <div className="bg-green-100 border border-green-200 w-12 h-12 flex items-center justify-center mx-auto mb-4">
+                <span className="text-lg font-bold text-green-700">3</span>
               </div>
-              <h3 className="text-lg font-semibold mb-2">Get Notified</h3>
-              <p className="text-gray-600">
-                Receive instant Telegram notifications when new releases are published
-              </p>
+              <h3 className="text-base font-semibold mb-2 text-gray-900">Get notified</h3>
+              <p className="text-gray-700 text-sm">Receive instant Telegram notifications when new releases are published</p>
             </div>
           </div>
         </div>
 
         {/* CTA */}
-        <div className="mt-20 text-center bg-white rounded-xl shadow-lg p-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            Ready to stay updated?
-          </h2>
-          <p className="text-xl text-gray-600 mb-8">
-            Join thousands of developers who never miss important releases
-          </p>
-          <Link 
+        <div className="mt-20 text-center bg-white border border-gray-200 p-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Ready to get started?</h2>
+          <p className="text-lg text-gray-700 mb-8">Join developers who never miss important releases</p>
+          <Link
             href="/auth/login"
-            className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors inline-flex items-center space-x-2"
+            className="bg-green-600 text-white px-6 py-3 border border-green-700 hover:bg-green-700 transition-colors inline-flex items-center space-x-2 font-medium"
           >
-            <Github className="h-5 w-5" />
-            <span>Start for Free</span>
+            <Github className="h-4 w-4" />
+            <span>Sign up for free</span>
           </Link>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white mt-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <footer className="bg-white border-t border-gray-200 mt-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <GitBranch className="h-6 w-6" />
-              <span className="text-xl font-bold">GitPing</span>
+            <div className="flex items-center space-x-3">
+              <Image src="/gitping-logo.png" alt="GitPing Logo" width={24} height={24} className="h-6 w-6 rounded-lg" />
+              <span className="text-lg font-semibold text-gray-900">GitPing</span>
             </div>
-            <div className="text-sm text-gray-400">
-              Built with ❤️ using Cloudflare Workers
-            </div>
+            <div className="text-sm text-gray-600">Built with Cloudflare Workers</div>
           </div>
         </div>
       </footer>
     </div>
-  )
+  );
 }

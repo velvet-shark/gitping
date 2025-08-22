@@ -7,6 +7,9 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'GitPing - GitHub Release Notifications',
   description: 'Get instant notifications when your favorite repositories release new versions.',
+  icons: {
+    icon: '/favicon.png',
+  },
 }
 
 export default function RootLayout({

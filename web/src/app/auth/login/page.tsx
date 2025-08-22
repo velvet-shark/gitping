@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { Github, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 
 function LoginPageContent() {
@@ -58,6 +59,15 @@ function LoginPageContent() {
       <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+              <Image
+                src="/gitping-logo.png"
+                alt="GitPing Logo"
+                width={48}
+                height={48}
+                className="h-14 w-14 rounded-lg"
+              />
+            </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Sign in to GitPing</h1>
             <p className="text-gray-600">Connect your GitHub account to start tracking releases</p>
           </div>
@@ -72,12 +82,12 @@ function LoginPageContent() {
             onClick={handleGitHubLogin}
             disabled={loading}
             className={`
-              w-full flex items-center justify-center space-x-3 px-6 py-3 border-2 border-black rounded-lg text-white bg-black hover:bg-gray-800 hover:border-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors shadow-sm
+              w-full flex items-center justify-center space-x-2 px-4 py-3 border border-gray-900 text-white bg-gray-900 hover:bg-gray-800 hover:border-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors font-medium text-sm
               ${loading ? "opacity-50 cursor-not-allowed" : ""}
             `}
           >
-            <Github className="h-5 w-5" />
-            <span>{loading ? "Connecting..." : "Continue with GitHub"}</span>
+            <Github className="h-4 w-4" />
+            <span>{loading ? "Connecting..." : "Sign in with GitHub"}</span>
           </button>
 
           <div className="mt-6 text-center">
