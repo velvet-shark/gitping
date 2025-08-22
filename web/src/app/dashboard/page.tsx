@@ -300,26 +300,78 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="bg-white brutal-border-thick brutal-shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row justify-between items-center py-6 gap-4">
-            <div className="flex items-center space-x-4">
-              <Link href="/" className="flex items-center space-x-3 brutal-wiggle">
-                <Image
-                  src="/gitping-logo.png"
-                  alt="GitPing Logo"
-                  width={40}
-                  height={40}
-                  className="h-10 w-10 rounded-lg brutal-border brutal-shadow"
-                />
-                <span className="text-xl font-bold text-black">GitPing</span>
-              </Link>
-              <div className="bg-black w-1 h-8"></div>
-              <img src={user.avatar_url} alt={user.name} className="h-10 w-10 rounded-full brutal-border" />
-              <div>
-                <h1 className="text-base font-medium text-black">{user.name}</h1>
-                <p className="text-xs text-gray-600">@{user.github_username}</p>
+          <div className="py-4 sm:py-6">
+            {/* Mobile: Logo and user info stacked */}
+            <div className="flex flex-col space-y-4 sm:hidden">
+              <div className="flex items-center justify-between">
+                <Link href="/" className="flex items-center space-x-3 brutal-wiggle">
+                  <Image
+                    src="/gitping-logo.png"
+                    alt="GitPing Logo"
+                    width={40}
+                    height={40}
+                    className="h-10 w-10 rounded-lg brutal-border brutal-shadow"
+                  />
+                  <span className="text-xl font-bold text-black">GitPing</span>
+                </Link>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <img src={user.avatar_url} alt={user.name} className="h-10 w-10 rounded-full brutal-border" />
+                  <div>
+                    <h1 className="text-base font-medium text-black">{user.name}</h1>
+                    <p className="text-xs text-gray-600">@{user.github_username}</p>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-3">
+            
+            {/* Desktop: Everything in one row */}
+            <div className="hidden sm:flex justify-between items-center">
+              <div className="flex items-center space-x-4">
+                <Link href="/" className="flex items-center space-x-3 brutal-wiggle">
+                  <Image
+                    src="/gitping-logo.png"
+                    alt="GitPing Logo"
+                    width={40}
+                    height={40}
+                    className="h-10 w-10 rounded-lg brutal-border brutal-shadow"
+                  />
+                  <span className="text-xl font-bold text-black">GitPing</span>
+                </Link>
+                <div className="bg-black w-1 h-8"></div>
+                <img src={user.avatar_url} alt={user.name} className="h-10 w-10 rounded-full brutal-border" />
+                <div>
+                  <h1 className="text-base font-medium text-black">{user.name}</h1>
+                  <p className="text-xs text-gray-600">@{user.github_username}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                {channels.length > 0 ? (
+                  <div className="flex items-center space-x-2 bg-brutal-green brutal-border px-3 py-2 brutal-shadow">
+                    <MessageSquare className="h-4 w-4 text-black" />
+                    <span className="text-xs font-medium text-black">
+                      {channels.length} channel{channels.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={generateConnectionCode}
+                    className="flex items-center space-x-2 bg-brutal-green text-black brutal-button brutal-pulse"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    <span>Add channel</span>
+                  </button>
+                )}
+                <button onClick={handleLogout} className="flex items-center space-x-2 text-gray-700 hover:text-black font-medium">
+                  <LogOut className="h-4 w-4" />
+                  <span>Sign out</span>
+                </button>
+              </div>
+            </div>
+            
+            {/* Mobile: Channel info and actions */}
+            <div className="flex justify-between items-center mt-4 sm:hidden">
               {channels.length > 0 ? (
                 <div className="flex items-center space-x-2 bg-brutal-green brutal-border px-3 py-2 brutal-shadow">
                   <MessageSquare className="h-4 w-4 text-black" />
@@ -330,7 +382,7 @@ export default function DashboardPage() {
               ) : (
                 <button
                   onClick={generateConnectionCode}
-                  className="flex items-center space-x-2 bg-brutal-green text-black brutal-button brutal-pulse"
+                  className="flex items-center space-x-2 bg-brutal-green text-black brutal-button brutal-pulse text-sm"
                 >
                   <MessageSquare className="h-4 w-4" />
                   <span>Add channel</span>
@@ -398,13 +450,13 @@ Close
 
         {/* Channels */}
         <div className="bg-white brutal-card mb-6">
-          <div className="px-6 py-4 bg-brutal-pink brutal-border-thick">
-            <div className="flex justify-between items-center">
+          <div className="px-4 sm:px-6 py-4 bg-brutal-pink brutal-border-thick">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <h2 className="text-lg font-bold text-black">Notification channels ({channels.length})</h2>
               {!hasTelegramChannel() && (
                 <button
                   onClick={generateConnectionCode}
-                  className="flex items-center space-x-2 bg-brutal-green text-black brutal-button px-4 py-2 brutal-pulse"
+                  className="flex items-center space-x-2 bg-brutal-green text-black brutal-button px-3 sm:px-4 py-2 brutal-pulse text-sm"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Add Telegram</span>
@@ -413,7 +465,7 @@ Close
             </div>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {channels.length === 0 ? (
               <div className="text-center py-12">
                 <div className="bg-brutal-orange brutal-border w-16 h-16 mx-auto mb-6 flex items-center justify-center brutal-shadow">
@@ -431,7 +483,7 @@ Close
                 </button>
               </div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-4 sm:grid sm:gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 sm:space-y-0">
                 {channels.map((channel) => (
                   <div key={channel.id} className="p-4 bg-brutal-blue brutal-border mb-2 brutal-tilt hover:brutal-tilt-right transition-transform">
                     <div className="flex items-start justify-between">
@@ -463,12 +515,12 @@ Close
 
         {/* Subscriptions */}
         <div className="bg-white brutal-card">
-          <div className="px-6 py-4 bg-brutal-purple brutal-border-thick">
-            <div className="flex justify-between items-center">
+          <div className="px-4 sm:px-6 py-4 bg-brutal-purple brutal-border-thick">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <h2 className="text-lg font-bold text-black">Your subscriptions ({subscriptions.length})</h2>
               <button
                 onClick={handleAddRepository}
-                className="flex items-center space-x-2 bg-brutal-green text-black brutal-button px-4 py-2"
+                className="flex items-center space-x-2 bg-brutal-green text-black brutal-button px-3 sm:px-4 py-2 text-sm"
               >
                 <Plus className="h-4 w-4" />
                 <span>Add repository</span>
@@ -476,7 +528,7 @@ Close
             </div>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {subscriptions.length === 0 ? (
               <div className="text-center py-12">
                 <div className="bg-brutal-orange brutal-border w-16 h-16 mx-auto mb-6 flex items-center justify-center brutal-shadow">
@@ -494,7 +546,7 @@ Close
                 </button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {subscriptions.map((sub) => (
                   <div key={sub.id} className="p-4 bg-brutal-green brutal-border mb-2 brutal-tilt hover:brutal-tilt-right transition-transform">
                     <div className="flex items-start justify-between">
