@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   description: 'Get instant notifications when your favorite repositories release new versions.',
   icons: {
     icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
   },
 }
 

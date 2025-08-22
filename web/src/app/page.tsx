@@ -1,8 +1,43 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
-import { GitBranch, Bell, Zap, Shield, Github } from "lucide-react";
+import { useEffect, useState } from "react";
+import { GitBranch, Bell, Zap, Shield, Github, User } from "lucide-react";
+
+interface User {
+  id: string;
+  name: string;
+  github_username: string;
+  avatar_url: string;
+}
 
 export default function HomePage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+
+        const savedUser = localStorage.getItem('user');
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
+        }
+      } catch (error) {
+        console.error('Error checking auth:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -20,12 +55,24 @@ export default function HomePage() {
               <span className="text-xl font-semibold text-gray-900">GitPing</span>
             </div>
             <div className="flex items-center space-x-3">
-              <Link
-                href="/auth/login"
-                className="bg-green-600 text-white px-4 py-2 border border-green-700 hover:bg-green-700 transition-colors font-medium text-sm"
-              >
-                Sign in
-              </Link>
+              {loading ? (
+                <div className="animate-pulse bg-gray-200 h-8 w-16"></div>
+              ) : user ? (
+                <Link
+                  href="/dashboard"
+                  className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 border border-green-700 hover:bg-green-700 transition-colors font-medium text-sm"
+                >
+                  <User className="h-3 w-3" />
+                  <span>Dashboard</span>
+                </Link>
+              ) : (
+                <Link
+                  href="/auth/login"
+                  className="bg-green-600 text-white px-4 py-2 border border-green-700 hover:bg-green-700 transition-colors font-medium text-sm"
+                >
+                  Sign in
+                </Link>
+              )}
             </div>
           </div>
         </div>
