@@ -107,22 +107,16 @@ export default function HomePage() {
           {/* Right Column - Dashboard Preview */}
           <div className="relative">
             <div className="bg-brutal-purple brutal-card p-8 text-center brutal-float">
-              <div className="bg-white brutal-border-thick p-12 mb-4">
-                <div className="space-y-4">
-                  <div className="h-8 bg-gray-300 brutal-border w-3/4 mx-auto"></div>
-                  <div className="h-4 bg-gray-200 brutal-border w-1/2 mx-auto"></div>
-                  <div className="grid grid-cols-2 gap-4 mt-8">
-                    <div className="h-16 bg-brutal-blue brutal-border"></div>
-                    <div className="h-16 bg-brutal-pink brutal-border"></div>
-                  </div>
-                  <div className="space-y-2 mt-6">
-                    <div className="h-3 bg-gray-300 brutal-border"></div>
-                    <div className="h-3 bg-gray-300 brutal-border w-4/5"></div>
-                    <div className="h-3 bg-gray-300 brutal-border w-3/5"></div>
-                  </div>
-                </div>
+              <div className="bg-white brutal-border-thick p-4 mb-4">
+                <Image
+                  src="/gitping-dashboard.png"
+                  alt="GitPing Dashboard Preview"
+                  width={600}
+                  height={400}
+                  className="w-full h-auto rounded-lg"
+                />
               </div>
-              <p className="text-sm font-medium text-gray-700">Dashboard Preview Coming Soon!</p>
+              <p className="text-sm font-medium text-gray-700">Your dashboard for managing notifications</p>
             </div>
           </div>
         </div>
