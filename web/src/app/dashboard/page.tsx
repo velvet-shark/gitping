@@ -300,7 +300,7 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="bg-white brutal-border-thick brutal-shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+          <div className="flex flex-col sm:flex-row justify-between items-center py-6 gap-4">
             <div className="flex items-center space-x-4">
               <Link href="/" className="flex items-center space-x-3 brutal-wiggle">
                 <Image
@@ -319,7 +319,7 @@ export default function DashboardPage() {
                 <p className="text-xs text-gray-600">@{user.github_username}</p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-3">
               {channels.length > 0 ? (
                 <div className="flex items-center space-x-2 bg-brutal-green brutal-border px-3 py-2 brutal-shadow">
                   <MessageSquare className="h-4 w-4 text-black" />
@@ -351,8 +351,8 @@ export default function DashboardPage() {
         {showConnectionCode && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white brutal-card p-8 max-w-md w-full mx-4">
-              <h3 className="text-lg font-black text-black mb-4 brutal-text text-brutal-shadow">ADD TELEGRAM CHANNEL!</h3>
-              <p className="text-black font-bold text-sm mb-4">SEND THIS VERIFICATION CODE TO THE GITPING TELEGRAM BOT:</p>
+              <h3 className="text-lg font-bold text-black mb-4">Add Telegram channel</h3>
+              <p className="text-black font-medium text-sm mb-4">Send this verification code to the GitPing Telegram bot:</p>
               <div className="bg-brutal-yellow-soft brutal-border p-4 mb-4 brutal-shadow">
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-mono font-black text-black">{connectionCode}</span>
@@ -366,7 +366,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="text-xs text-black font-bold mb-4 space-y-2">
-                <p>1. OPEN TELEGRAM AND START THE GITPING BOT:</p>
+                <p>1. Open Telegram and start the GitPing bot:</p>
                 <p className="ml-4">
                   <a
                     href="https://t.me/gitping_notify_bot"
@@ -374,14 +374,14 @@ export default function DashboardPage() {
                     rel="noopener noreferrer"
                     className="text-black hover:text-gray-700 underline font-black"
                   >
-                    @GITPING_NOTIFY_BOT
+                    @gitping_notify_bot
                   </a>
                 </p>
-                <p>2. SEND THIS VERIFICATION COMMAND:</p>
+                <p>2. Send this verification command:</p>
                 <p className="ml-4">
                   <code className="bg-black text-white px-2 py-1 font-mono">/verify {connectionCode}</code>
                 </p>
-                <p>3. THE CODE EXPIRES IN 10 MINUTES!</p>
+                <p>3. The code expires in 10 minutes</p>
               </div>
               <button
                 onClick={() => {
@@ -390,7 +390,7 @@ export default function DashboardPage() {
                 }}
                 className="w-full bg-brutal-green text-black brutal-button px-4 py-3"
               >
-                CLOSE!
+Close
               </button>
             </div>
           </div>
@@ -400,7 +400,7 @@ export default function DashboardPage() {
         <div className="bg-white brutal-card mb-6">
           <div className="px-6 py-4 bg-brutal-pink brutal-border-thick">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-black text-black brutal-text">NOTIFICATION CHANNELS ({channels.length})</h2>
+              <h2 className="text-lg font-bold text-black">Notification channels ({channels.length})</h2>
               {!hasTelegramChannel() && (
                 <button
                   onClick={generateConnectionCode}
@@ -419,9 +419,9 @@ export default function DashboardPage() {
                 <div className="bg-brutal-orange brutal-border w-16 h-16 mx-auto mb-6 flex items-center justify-center brutal-shadow">
                   <MessageSquare className="h-8 w-8 text-black" />
                 </div>
-                <h3 className="text-lg font-black text-black mb-4 brutal-text">NO CHANNELS CONFIGURED!</h3>
-                <p className="text-black font-bold text-sm mb-6 max-w-md mx-auto">
-                  ADD A NOTIFICATION CHANNEL TO START RECEIVING UPDATES ABOUT YOUR REPOSITORIES!
+                <h3 className="text-lg font-bold text-black mb-4">No channels configured</h3>
+                <p className="text-black font-medium text-sm mb-6 max-w-md mx-auto">
+                  Add a notification channel to start receiving updates about your repositories.
                 </p>
                 <button
                   onClick={generateConnectionCode}
@@ -438,13 +438,13 @@ export default function DashboardPage() {
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
                           <MessageSquare className="h-4 w-4 text-black" />
-                          <span className="font-black text-black text-sm">{channel.display_name || "TELEGRAM"}</span>
-                          <span className="inline-flex items-center px-2 py-1 text-xs font-black bg-white text-black brutal-border">
-                            {channel.channel_type.toUpperCase()}
+                          <span className="font-bold text-black text-sm">{channel.display_name || "Telegram"}</span>
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-white text-black brutal-border">
+                            {channel.channel_type}
                           </span>
                         </div>
-                        <p className="text-xs text-black font-bold mb-1">ADDED {formatDateWithRelative(channel.created_at)}</p>
-                        <p className="text-xs text-black font-bold">VERIFIED {formatDateTime(channel.verified_at)}</p>
+                        <p className="text-xs text-black font-medium mb-1">Added {formatDateWithRelative(channel.created_at)}</p>
+                        <p className="text-xs text-black font-medium">Verified {formatDateTime(channel.verified_at)}</p>
                       </div>
                       <button
                         onClick={() => handleDeleteChannel(channel.id, channel.display_name || "Telegram")}
@@ -465,13 +465,13 @@ export default function DashboardPage() {
         <div className="bg-white brutal-card">
           <div className="px-6 py-4 bg-brutal-purple brutal-border-thick">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-black text-black brutal-text">YOUR SUBSCRIPTIONS ({subscriptions.length})</h2>
+              <h2 className="text-lg font-bold text-black">Your subscriptions ({subscriptions.length})</h2>
               <button
                 onClick={handleAddRepository}
                 className="flex items-center space-x-2 bg-brutal-green text-black brutal-button px-4 py-2"
               >
                 <Plus className="h-4 w-4" />
-                <span>ADD REPOSITORY!</span>
+                <span>Add repository</span>
               </button>
             </div>
           </div>
@@ -482,9 +482,9 @@ export default function DashboardPage() {
                 <div className="bg-brutal-orange brutal-border w-16 h-16 mx-auto mb-6 flex items-center justify-center brutal-shadow">
                   <Bell className="h-8 w-8 text-black" />
                 </div>
-                <h3 className="text-lg font-black text-black mb-4 brutal-text">NO SUBSCRIPTIONS YET!</h3>
-                <p className="text-black font-bold text-sm mb-6 max-w-md mx-auto">
-                  START BY SUBSCRIBING TO REPOSITORIES YOU WANT TO TRACK FOR NEW RELEASES!
+                <h3 className="text-lg font-bold text-black mb-4">No subscriptions yet</h3>
+                <p className="text-black font-medium text-sm mb-6 max-w-md mx-auto">
+                  Start by subscribing to repositories you want to track for new releases.
                 </p>
                 <button
                   onClick={handleAddRepository}
@@ -500,12 +500,12 @@ export default function DashboardPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="font-black text-black text-sm">
+                          <h3 className="text-lg font-bold text-black mb-2">
                             <a
                               href={`https://github.com/${sub.repo}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-black hover:text-gray-700 hover:underline transition-colors"
+                              className="text-black hover:text-gray-700 underline transition-colors"
                             >
                               {sub.repo}
                             </a>
@@ -514,25 +514,25 @@ export default function DashboardPage() {
                             {sub.channels.map((channel, index) => (
                               <span
                                 key={index}
-                                className="inline-flex items-center px-2 py-1 text-xs font-black bg-white text-black brutal-border"
+                                className="inline-flex items-center px-2 py-1 text-xs font-medium bg-white text-black brutal-border"
                               >
-                                TELEGRAM
+                                Telegram
                               </span>
                             ))}
                           </div>
                         </div>
-                        <p className="text-xs text-black font-bold mb-1">{sub.kind.toUpperCase()} NOTIFICATIONS</p>
-                        <div className="text-xs text-black font-bold mb-1">
-                          SUBSCRIBED {formatDateWithRelative(sub.created_at)}
+                        <p className="text-xs text-black font-medium mb-1">{sub.kind} notifications</p>
+                        <div className="text-xs text-black font-medium mb-1">
+                          Subscribed {formatDateWithRelative(sub.created_at)}
                         </div>
                         {sub.last_release ? (
-                          <div className="text-xs text-black font-bold">
-                            LAST RELEASE: <span className="font-black">{sub.last_release.tag_name}</span>
+                          <div className="text-sm text-black font-medium">
+                            Last release: <a href={sub.last_release.html_url} target="_blank" rel="noopener noreferrer" className="font-bold text-black hover:text-gray-700 underline bg-brutal-yellow-soft px-2 py-1 brutal-border">{sub.last_release.tag_name}</a>
                             <span className="mx-2">•</span>
-                            {formatDateWithRelative(sub.last_release.published_at)}
+                            <span className="font-bold bg-white px-2 py-1 brutal-border">{formatDateWithRelative(sub.last_release.published_at)}</span>
                           </div>
                         ) : (
-                          <div className="text-xs text-black font-bold">NO RELEASES YET</div>
+                          <div className="text-xs text-black font-medium">No releases yet</div>
                         )}
                       </div>
                       <button

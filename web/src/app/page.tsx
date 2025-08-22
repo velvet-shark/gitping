@@ -90,7 +90,7 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-6 items-start">
+            <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-center">
               <Link
                 href="/auth/login"
                 className="bg-brutal-green text-black brutal-button flex items-center space-x-3 text-lg brutal-wiggle"
