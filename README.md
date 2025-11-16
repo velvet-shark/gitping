@@ -17,6 +17,7 @@ Get notified the moment your favorite repositories release new versions. Built o
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Cloudflare account (free tier works)
 - GitHub personal access token (`public_repo` scope)
 - Telegram bot (created via @BotFather)
@@ -24,6 +25,7 @@ Get notified the moment your favorite repositories release new versions. Built o
 ### Installation
 
 1. **Clone and install:**
+
    ```bash
    git clone <your-repo>
    cd gitping
@@ -31,28 +33,33 @@ Get notified the moment your favorite repositories release new versions. Built o
    ```
 
 2. **Create Cloudflare resources:**
+
    ```bash
    wrangler d1 create gitping
    wrangler kv namespace create POLL_STATE
    ```
 
 3. **Configure environment:**
+
    ```bash
    cp .env.example .env
    # Edit .env with your database and KV IDs from step 2
    ```
 
 4. **Generate config files:**
+
    ```bash
    npm run setup
    ```
 
 5. **Initialize database:**
+
    ```bash
    npm run db:migrate
    ```
 
 6. **Set API secrets:**
+
    ```bash
    wrangler secret put GITHUB_TOKEN --config wrangler-api.toml
    wrangler secret put TELEGRAM_BOT_TOKEN --config wrangler-api.toml
@@ -61,6 +68,7 @@ Get notified the moment your favorite repositories release new versions. Built o
    ```
 
 7. **Deploy:**
+
    ```bash
    npm run deploy
    ```
@@ -74,11 +82,13 @@ Get notified the moment your favorite repositories release new versions. Built o
 ## 🤖 Using the Telegram Bot
 
 ### Getting Started
+
 1. Find your bot in Telegram (search for its @username)
 2. Send `/start` to begin
 3. Use the interactive buttons or commands below
 
 ### Bot Commands
+
 - `/subscribe owner/repo` - Subscribe to repository releases
 - `/list` - View your active subscriptions
 - `/unsubscribe <id>` - Remove a subscription
@@ -86,15 +96,16 @@ Get notified the moment your favorite repositories release new versions. Built o
 - `/help` - Show available commands
 
 ### Example Usage
+
 ```
 You: /subscribe microsoft/vscode
-Bot: ✅ Successfully subscribed! You'll get notifications when 
+Bot: ✅ Successfully subscribed! You'll get notifications when
      Microsoft VS Code publishes new releases.
 
 You: /list
 Bot: 📋 Your Subscriptions (1)
      1. microsoft/vscode • ID: 123
-     
+
 You: /unsubscribe 123
 Bot: ✅ Subscription removed successfully!
 ```
@@ -110,12 +121,14 @@ Bot: ✅ Subscription removed successfully!
 ## 🛠️ Development
 
 ### Local Development
+
 ```bash
 npm run dev:api          # Start API worker locally
 npm run dev:poller       # Start poller worker locally
 ```
 
 ### Deployment
+
 ```bash
 npm run deploy           # Deploy both workers
 npm run deploy:prod      # Deploy to production
@@ -124,27 +137,34 @@ npm run deploy:prod      # Deploy to production
 ### Frontend Deployment (Cloudflare Pages)
 
 #### Build Settings
+
 - **Framework preset**: `Next.js (Static HTML Export)`
 - **Build command**: `cd web && npm run build`
 - **Build output directory**: `web/out`
 - **Node.js version**: `18` or `20`
 
 #### Environment Variables
+
 Add in Cloudflare Pages settings:
+
 - **NEXT_PUBLIC_API_URL**: `your_api_url`
 
 #### GitHub OAuth Configuration
+
 Update your GitHub OAuth app with:
+
 - **Homepage URL**: `your_url`
 - **Authorization callback URL**: `your_api_url`
 
 ### Monitoring
+
 ```bash
 npm run logs:api         # Tail API worker logs
 npm run logs:poller      # Tail poller worker logs
 ```
 
 ### Database Management
+
 ```bash
 npm run db:migrate       # Run migrations on remote database
 npm run db:migrate:local # Run migrations locally
@@ -176,16 +196,19 @@ POST /connect/telegram
 GitPing uses a template-based configuration system:
 
 ### Files in Git
+
 - `wrangler-api.template.toml` - API worker template
-- `wrangler-poller.template.toml` - Poller worker template  
+- `wrangler-poller.template.toml` - Poller worker template
 - `.env.example` - Environment template
 
 ### Generated Files (Git ignored)
+
 - `wrangler-api.toml` - Generated with your IDs
 - `wrangler-poller.toml` - Generated with your IDs
 - `.env` - Your actual environment variables
 
 ### Environment Variables
+
 ```bash
 # Required
 D1_DATABASE_ID=your_database_id
@@ -202,7 +225,7 @@ KV_NAMESPACE_ID_PROD=your_prod_kv_id
 ✅ **Encrypted secrets** - API tokens stored as Worker secrets  
 ✅ **Environment isolation** - Separate resources for dev/staging/prod  
 ✅ **Input validation** - Repository and user data validation  
-✅ **Rate limiting** - GitHub API usage monitoring  
+✅ **Rate limiting** - GitHub API usage monitoring
 
 ## 🎯 Example: Getting Your First Notification
 
@@ -222,20 +245,24 @@ https://github.com/vercel/next.js/releases/tag/v14.1.0
 ## 🔍 Troubleshooting
 
 ### Bot doesn't respond
+
 - Check webhook setup: `npm run telegram:setup`
 - Verify API worker is deployed and healthy
 
-### "Repository not found" 
+### "Repository not found"
+
 - Ensure repository name is correct: `owner/repo`
 - Repository must be public
 - Check GitHub token has `public_repo` scope
 
 ### No notifications received
+
 - Check poller logs: `npm run logs:poller`
 - Verify GitHub token is set as Worker secret
 - Ensure subscription was created successfully
 
 ### Configuration issues
+
 - Regenerate config files: `npm run setup`
 - Check your `.env` file has the correct IDs
 - Verify resources exist: `wrangler d1 list` and `wrangler kv namespace list`
@@ -261,6 +288,7 @@ https://github.com/vercel/next.js/releases/tag/v14.1.0
 ## 🎛️ Advanced Configuration
 
 ### Custom Filters
+
 ```json
 {
   "filters": {
@@ -271,7 +299,9 @@ https://github.com/vercel/next.js/releases/tag/v14.1.0
 ```
 
 ### Multiple Environments
+
 Create separate resources for production:
+
 ```bash
 wrangler d1 create gitping-prod
 wrangler kv namespace create POLL_STATE_PROD
@@ -282,8 +312,9 @@ npm run deploy:prod
 ## 🎊 Success Stories
 
 GitPing is perfect for:
+
 - **Developers** tracking framework updates
-- **DevOps teams** monitoring tool releases  
+- **DevOps teams** monitoring tool releases
 - **Security teams** watching vulnerability patches
 - **Open source maintainers** staying updated on dependencies
 
@@ -293,6 +324,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-**GitPing** - *Never miss a release again* 🎯
+**GitPing** - _Never miss a release again_ 🎯
 
 Built with ❤️ using Cloudflare Workers, TypeScript, and Telegram Bot API.
