@@ -53,9 +53,7 @@ function processTemplate(templatePath, outputPath, envVars) {
   // For optional variables (prod/staging), use dev values as fallback
   const fallbackMappings = {
     'D1_DATABASE_ID_PROD': envVars.D1_DATABASE_ID,
-    'KV_NAMESPACE_ID_PROD': envVars.KV_NAMESPACE_ID,
-    'D1_DATABASE_ID_STAGING': envVars.D1_DATABASE_ID,
-    'KV_NAMESPACE_ID_STAGING': envVars.KV_NAMESPACE_ID
+    'D1_DATABASE_ID_STAGING': envVars.D1_DATABASE_ID
   };
 
   Object.entries(fallbackMappings).forEach(([key, fallback]) => {
@@ -84,7 +82,7 @@ function main() {
   const envVars = loadEnv();
   
   // Validate required variables
-  const required = ['D1_DATABASE_ID', 'KV_NAMESPACE_ID'];
+  const required = ['D1_DATABASE_ID'];
   const missing = required.filter(key => !envVars[key] || envVars[key] === `your_${key.toLowerCase()}`);
   
   if (missing.length > 0) {

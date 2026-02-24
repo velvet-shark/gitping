@@ -2,7 +2,6 @@
 
 export interface Env {
   DB: D1Database;
-  POLL_STATE: KVNamespace;
   EVENTS: Queue;
   TELEGRAM_BOT_TOKEN: string;
   GITHUB_TOKEN: string;
@@ -34,6 +33,12 @@ export interface Repo {
   last_polled_at?: number;
   polling_interval: number;
   consecutive_errors: number;
+}
+
+export interface PollingRepo extends Repo {
+  release_last_seen_id?: string | null;
+  release_etag?: string | null;
+  release_last_modified?: string | null;
 }
 
 export interface Subscription {
@@ -202,12 +207,12 @@ export interface GitHubCommit {
   html_url: string;
 }
 
-// Polling State in KV
+// Repository polling state (stored in D1)
 export interface PollState {
   lastSeenId?: string;
   etag?: string;
   lastModified?: string;
-  checkedAt: number;
+  checkedAt?: number;
 }
 
 // Queue Message Types

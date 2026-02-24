@@ -11,11 +11,6 @@ binding = "DB"
 database_name = "gitping"
 database_id = "${D1_DATABASE_ID}"
 
-# KV for shared state
-[[kv_namespaces]]
-binding = "POLL_STATE"
-id = "${KV_NAMESPACE_ID}"
-
 # Environment variables
 [vars]
 PROJECT_NAME = "gitping"
@@ -28,9 +23,6 @@ name = "gitping-api-prod"
 binding = "DB"
 database_name = "gitping"
 database_id = "${D1_DATABASE_ID_PROD}"
-[[env.production.kv_namespaces]]
-binding = "POLL_STATE"
-id = "${KV_NAMESPACE_ID_PROD}"
 [env.production.vars]
 ENVIRONMENT = "production"
 
@@ -41,8 +33,5 @@ name = "gitping-api-staging"
 binding = "DB"
 database_name = "gitping"
 database_id = "${D1_DATABASE_ID_STAGING}"
-[[env.staging.kv_namespaces]]
-binding = "POLL_STATE"
-id = "${KV_NAMESPACE_ID_STAGING}"
 [env.staging.vars]
 ENVIRONMENT = "staging"

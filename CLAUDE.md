@@ -17,7 +17,7 @@ The system uses a microservices architecture with three Cloudflare Workers:
 ### Key Components
 
 - **Database**: Cloudflare D1 (SQLite) for persistent storage
-- **State Management**: Cloudflare KV for polling state (ETags, last-seen IDs)
+- **State Management**: Cloudflare D1 (`repo_poll_states`) for polling state (ETags, last-seen IDs)
 - **Message Queue**: Cloudflare Queues for decoupling event processing
 - **External APIs**: GitHub REST API, Telegram Bot API
 
@@ -73,7 +73,7 @@ Located in `src/schema.sql`. Key tables:
 ## Setup Requirements
 
 See `setup.md` for complete setup instructions. You'll need:
-- Cloudflare account with D1 and KV enabled
+- Cloudflare account with D1 enabled
 - GitHub personal access token (public_repo scope)
 - Telegram bot token from @BotFather
 

@@ -25,6 +25,16 @@ CREATE TABLE IF NOT EXISTS repos (
   UNIQUE(owner, name)
 );
 
+-- Polling state for each repository (replaces KV usage for release state)
+CREATE TABLE IF NOT EXISTS repo_poll_states (
+  repo_id INTEGER PRIMARY KEY,
+  release_last_seen_id TEXT,
+  release_etag TEXT,
+  release_last_modified TEXT,
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY (repo_id) REFERENCES repos(id) ON DELETE CASCADE
+);
+
 -- Subscriptions: kind 'release' | 'commit'
 CREATE TABLE IF NOT EXISTS subscriptions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -128,6 +138,7 @@ CREATE INDEX IF NOT EXISTS idx_events_inserted ON events(inserted_at);
 CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications(status, attempts);
 CREATE INDEX IF NOT EXISTS idx_notifications_event ON notifications(event_id);
 CREATE INDEX IF NOT EXISTS idx_repos_polling ON repos(last_polled_at, consecutive_errors);
+CREATE INDEX IF NOT EXISTS idx_repo_poll_states_updated ON repo_poll_states(updated_at);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_users_github_id ON users(github_id);

@@ -36,14 +36,13 @@ Get notified the moment your favorite repositories release new versions. Built o
 
    ```bash
    wrangler d1 create gitping
-   wrangler kv namespace create POLL_STATE
    ```
 
 3. **Configure environment:**
 
    ```bash
    cp .env.example .env
-   # Edit .env with your database and KV IDs from step 2
+   # Edit .env with your database ID from step 2
    ```
 
 4. **Generate config files:**
@@ -115,7 +114,7 @@ Bot: ✅ Subscription removed successfully!
 - **API Worker**: REST endpoints + Telegram bot handler
 - **Poller Worker**: Cron-based GitHub polling (every minute)
 - **Database**: Cloudflare D1 (SQLite) for persistence
-- **Cache**: Cloudflare KV for polling state & ETags
+- **Polling State**: Cloudflare D1 table (`repo_poll_states`) for ETags and last-seen release IDs
 - **Queue**: Inline processing (queue-based on paid plans)
 
 ## 🛠️ Development
@@ -212,11 +211,9 @@ GitPing uses a template-based configuration system:
 ```bash
 # Required
 D1_DATABASE_ID=your_database_id
-KV_NAMESPACE_ID=your_kv_namespace_id
 
 # Optional (for multiple environments)
 D1_DATABASE_ID_PROD=your_prod_database_id
-KV_NAMESPACE_ID_PROD=your_prod_kv_id
 ```
 
 ## 🛡️ Security Features
@@ -265,7 +262,7 @@ https://github.com/vercel/next.js/releases/tag/v14.1.0
 
 - Regenerate config files: `npm run setup`
 - Check your `.env` file has the correct IDs
-- Verify resources exist: `wrangler d1 list` and `wrangler kv namespace list`
+- Verify resources exist: `wrangler d1 list`
 
 ## 📁 Project Structure
 
@@ -304,7 +301,6 @@ Create separate resources for production:
 
 ```bash
 wrangler d1 create gitping-prod
-wrangler kv namespace create POLL_STATE_PROD
 # Add IDs to .env as D1_DATABASE_ID_PROD, etc.
 npm run deploy:prod
 ```

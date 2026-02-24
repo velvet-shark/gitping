@@ -1,7 +1,45 @@
-import type { Env, Repo, Subscription, Event, User, Session, ConnectionCode, VerifiedChannel } from './types';
+import type {
+  Env,
+  Repo,
+  PollingRepo,
+  PollState,
+  Subscription,
+  Event,
+  User,
+  Session,
+  ConnectionCode,
+  VerifiedChannel
+} from './types';
+
+let repoPollStateSchemaReady = false;
 
 export class DatabaseService {
   constructor(private env: Env) {}
+
+  private async ensureRepoPollStateSchema(): Promise<void> {
+    if (repoPollStateSchemaReady) {
+      return;
+    }
+
+    await this.env.DB
+      .prepare(`
+        CREATE TABLE IF NOT EXISTS repo_poll_states (
+          repo_id INTEGER PRIMARY KEY,
+          release_last_seen_id TEXT,
+          release_etag TEXT,
+          release_last_modified TEXT,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY (repo_id) REFERENCES repos(id) ON DELETE CASCADE
+        )
+      `)
+      .run();
+
+    await this.env.DB
+      .prepare('CREATE INDEX IF NOT EXISTS idx_repo_poll_states_updated ON repo_poll_states(updated_at)')
+      .run();
+
+    repoPollStateSchemaReady = true;
+  }
 
   // Users
   async createUser(id: string, tgChatId?: string): Promise<void> {
@@ -109,19 +147,37 @@ export class DatabaseService {
     return result as Repo | null;
   }
 
-  async getReposForPolling(minute: number): Promise<Repo[]> {
+  async getReposForPolling(minute: number): Promise<PollingRepo[]> {
+    await this.ensureRepoPollStateSchema();
+
     const result = await this.env.DB
       .prepare(`
-        SELECT * FROM repos 
-        WHERE id % 60 = ? 
-        AND (consecutive_errors < 5 OR last_polled_at IS NULL OR last_polled_at < ?)
-        ORDER BY last_polled_at ASC NULLS FIRST
+        SELECT
+          r.*,
+          ps.release_last_seen_id,
+          ps.release_etag,
+          ps.release_last_modified
+        FROM repos r
+        LEFT JOIN repo_poll_states ps ON ps.repo_id = r.id
+        WHERE r.id % 60 = ?
+        AND EXISTS (
+          SELECT 1
+          FROM subscriptions s
+          WHERE s.repo_id = r.id
+          LIMIT 1
+        )
+        AND (
+          r.consecutive_errors < 5
+          OR r.last_polled_at IS NULL
+          OR r.last_polled_at < ?
+        )
+        ORDER BY r.last_polled_at ASC NULLS FIRST
         LIMIT 100
       `)
       .bind(minute, Date.now() - 300000) // 5 minutes ago
       .all();
     
-    return (result.results || []) as Repo[];
+    return (result.results || []) as unknown as PollingRepo[];
   }
 
   async updateRepoPollingState(
@@ -136,6 +192,35 @@ export class DatabaseService {
         WHERE id = ?
       `)
       .bind(consecutiveErrors, lastPolledAt || Date.now(), id)
+      .run();
+  }
+
+  async updateRepoReleasePollState(repoId: number, state: PollState): Promise<void> {
+    await this.ensureRepoPollStateSchema();
+
+    await this.env.DB
+      .prepare(`
+        INSERT INTO repo_poll_states (
+          repo_id,
+          release_last_seen_id,
+          release_etag,
+          release_last_modified,
+          updated_at
+        )
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(repo_id) DO UPDATE SET
+          release_last_seen_id = excluded.release_last_seen_id,
+          release_etag = excluded.release_etag,
+          release_last_modified = excluded.release_last_modified,
+          updated_at = excluded.updated_at
+      `)
+      .bind(
+        repoId,
+        state.lastSeenId || null,
+        state.etag || null,
+        state.lastModified || null,
+        Date.now()
+      )
       .run();
   }
 
@@ -541,6 +626,38 @@ export class DatabaseService {
       .all();
     
     return result.results as VerifiedChannel[] || [];
+  }
+
+  async getChannelsForSubscriptions(subscriptionIds: number[]): Promise<Map<number, VerifiedChannel[]>> {
+    const channelsBySubscription = new Map<number, VerifiedChannel[]>();
+
+    if (subscriptionIds.length === 0) {
+      return channelsBySubscription;
+    }
+
+    const placeholders = subscriptionIds.map(() => '?').join(', ');
+    const result = await this.env.DB
+      .prepare(`
+        SELECT sc.subscription_id, vc.*
+        FROM subscription_channels sc
+        JOIN verified_channels vc ON vc.id = sc.channel_id
+        WHERE sc.subscription_id IN (${placeholders})
+        ORDER BY sc.subscription_id ASC, vc.created_at ASC
+      `)
+      .bind(...subscriptionIds)
+      .all();
+
+    type SubscriptionChannelRow = VerifiedChannel & { subscription_id: number };
+    const rows = (result.results || []) as unknown as SubscriptionChannelRow[];
+
+    for (const row of rows) {
+      const { subscription_id, ...channelData } = row;
+      const existing = channelsBySubscription.get(subscription_id) || [];
+      existing.push(channelData as VerifiedChannel);
+      channelsBySubscription.set(subscription_id, existing);
+    }
+
+    return channelsBySubscription;
   }
 
   async deleteSubscriptionChannels(subscriptionId: number): Promise<void> {

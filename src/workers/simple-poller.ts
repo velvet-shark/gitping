@@ -1,11 +1,12 @@
 // Simplified poller that processes notifications inline (no queues)
-import type { Env, PollState } from '../lib/types';
+import type { Env, PollingRepo, PollState, Subscription, VerifiedChannel } from '../lib/types';
 import { DatabaseService } from '../lib/db';
 import { GitHubAPI } from '../lib/github';
 import { TelegramAPI } from '../lib/telegram';
 
 export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    void ctx;
     const db = new DatabaseService(env);
     const github = new GitHubAPI(env);
     const telegram = new TelegramAPI(env);
@@ -23,9 +24,7 @@ export default {
       const batchSize = 5; // Smaller batches for free plan
       for (let i = 0; i < repos.length; i += batchSize) {
         const batch = repos.slice(i, i + batchSize);
-        const promises = batch.map(repo => 
-          ctx.waitUntil(pollRepoAndNotify(env, db, github, telegram, repo))
-        );
+        const promises = batch.map(repo => pollRepoAndNotify(db, github, telegram, repo));
         await Promise.allSettled(promises);
       }
       
@@ -36,18 +35,17 @@ export default {
 };
 
 async function pollRepoAndNotify(
-  env: Env, 
   db: DatabaseService, 
   github: GitHubAPI, 
   telegram: TelegramAPI,
-  repo: any
+  repo: PollingRepo
 ): Promise<void> {
   const repoKey = `${repo.owner}/${repo.name}`;
   console.log(`Polling repo: ${repoKey}`);
   
   try {
     // Poll releases and notify inline
-    await pollReleasesAndNotify(env, db, github, telegram, repo);
+    await pollReleasesAndNotify(db, github, telegram, repo);
     
     // Update successful polling state
     await db.updateRepoPollingState(repo.id, 0);
@@ -62,28 +60,19 @@ async function pollRepoAndNotify(
 }
 
 async function pollReleasesAndNotify(
-  env: Env,
   db: DatabaseService, 
   github: GitHubAPI, 
   telegram: TelegramAPI,
-  repo: any
+  repo: PollingRepo
 ): Promise<void> {
-  const stateKey = `rel:${repo.owner}/${repo.name}`;
-  
-  // Get current state from KV
-  const currentState = await env.POLL_STATE.get<PollState>(stateKey, { type: 'json' });
+  const currentState = getRepoPollState(repo);
   
   try {
     // Fetch releases from GitHub
     const result = await github.getReleases(repo.owner, repo.name, currentState || undefined);
     
     if (result.isNotModified) {
-      // No changes, just update the checked timestamp
-      const newState: PollState = {
-        ...currentState,
-        checkedAt: Date.now()
-      };
-      await env.POLL_STATE.put(stateKey, JSON.stringify(newState));
+      // Poll state unchanged - no write needed.
       return;
     }
     
@@ -93,11 +82,10 @@ async function pollReleasesAndNotify(
       // No releases found, update state
       const newState: PollState = {
         lastSeenId: currentState?.lastSeenId,
-        etag: result.etag,
-        lastModified: result.lastModified,
-        checkedAt: Date.now()
+        etag: result.etag || currentState?.etag,
+        lastModified: result.lastModified || currentState?.lastModified
       };
-      await env.POLL_STATE.put(stateKey, JSON.stringify(newState));
+      await db.updateRepoReleasePollState(repo.id, newState);
       return;
     }
     
@@ -107,7 +95,13 @@ async function pollReleasesAndNotify(
     
     if (currentLastSeenId) {
       // Normal case: filter by ID
-      newReleases = releases.filter(r => r.id > parseInt(currentLastSeenId));
+      const lastSeenReleaseId = Number.parseInt(currentLastSeenId, 10);
+      if (Number.isNaN(lastSeenReleaseId)) {
+        console.warn(`Invalid lastSeenId in poll state for ${repo.owner}/${repo.name}`);
+        newReleases = [];
+      } else {
+        newReleases = releases.filter(r => r.id > lastSeenReleaseId);
+      }
     } else {
       // First time polling: don't send notifications for existing releases
       // Just mark the latest one as seen to avoid spam
@@ -117,20 +111,36 @@ async function pollReleasesAndNotify(
     
     console.log(`Found ${newReleases.length} new releases for ${repo.owner}/${repo.name}`);
     
-    // Process new releases and send notifications immediately
-    for (const release of newReleases.reverse()) {
-      const eventId = await db.createEvent(
-        repo.id,
-        'release',
-        release.id.toString(),
-        release,
-        Math.floor(Date.parse(release.published_at) / 1000)
+    if (newReleases.length > 0) {
+      // Load subscriptions/channels once and reuse for each new release.
+      const subscriptions = await db.getSubscriptionsForRepo(repo.id, 'release');
+      const channelsBySubscription = await db.getChannelsForSubscriptions(
+        subscriptions.map((subscription) => subscription.id)
       );
-      
-      if (eventId) {
-        // Send notifications inline instead of queueing
-        await sendReleaseNotifications(db, telegram, repo, release, eventId);
-        console.log(`Processed release: ${repo.owner}/${repo.name} - ${release.tag_name}`);
+
+      // Process new releases and send notifications immediately
+      for (const release of newReleases.reverse()) {
+        const eventId = await db.createEvent(
+          repo.id,
+          'release',
+          release.id.toString(),
+          release,
+          Math.floor(Date.parse(release.published_at) / 1000)
+        );
+        
+        if (eventId) {
+          // Send notifications inline instead of queueing
+          await sendReleaseNotifications(
+            db,
+            telegram,
+            repo,
+            release,
+            eventId,
+            subscriptions,
+            channelsBySubscription
+          );
+          console.log(`Processed release: ${repo.owner}/${repo.name} - ${release.tag_name}`);
+        }
       }
     }
     
@@ -138,25 +148,14 @@ async function pollReleasesAndNotify(
     const latestReleaseId = Math.max(...releases.map(r => r.id)).toString();
     const newState: PollState = {
       lastSeenId: latestReleaseId,
-      etag: result.etag,
-      lastModified: result.lastModified,
-      checkedAt: Date.now()
+      etag: result.etag || currentState?.etag,
+      lastModified: result.lastModified || currentState?.lastModified
     };
     
-    await env.POLL_STATE.put(stateKey, JSON.stringify(newState));
+    await db.updateRepoReleasePollState(repo.id, newState);
     
   } catch (error) {
     console.error(`Error polling releases for ${repo.owner}/${repo.name}:`, error);
-    
-    // Update checked timestamp even on error
-    if (currentState) {
-      const newState: PollState = {
-        ...currentState,
-        checkedAt: Date.now()
-      };
-      await env.POLL_STATE.put(stateKey, JSON.stringify(newState));
-    }
-    
     throw error;
   }
 }
@@ -164,12 +163,13 @@ async function pollReleasesAndNotify(
 async function sendReleaseNotifications(
   db: DatabaseService,
   telegram: TelegramAPI,
-  repo: any,
+  repo: PollingRepo,
   release: any,
-  eventId: number
+  eventId: number,
+  subscriptions: Subscription[],
+  channelsBySubscription: Map<number, VerifiedChannel[]>
 ): Promise<void> {
-  // Get subscriptions for this repo
-  const subscriptions = await db.getSubscriptionsForRepo(repo.id, 'release');
+  const releaseMessage = telegram.formatReleaseMessage(repo.owner, repo.name, release);
   
   for (const subscription of subscriptions) {
     try {
@@ -191,8 +191,10 @@ async function sendReleaseNotifications(
         }
       }
       
-      // Get verified channels for this subscription
-      const channels = await db.getSubscriptionChannels(subscription.id);
+      const channels = resolveChannels(
+        subscription.channels_json,
+        channelsBySubscription.get(subscription.id) || []
+      );
       
       // Send to each channel
       for (const channel of channels) {
@@ -203,11 +205,15 @@ async function sendReleaseNotifications(
         );
         
         try {
-          if (channel.channel_type === 'telegram' && channel.channel_identifier) {
-            const message = telegram.formatReleaseMessage(repo.owner, repo.name, release);
-            await telegram.sendMessage(channel.channel_identifier, message, { parse_mode: 'HTML' });
-            await db.updateNotificationStatus(notificationId, 'sent');
+          if (channel.channel_type !== 'telegram') {
+            throw new Error(`Unsupported channel type: ${channel.channel_type}`);
           }
+          if (!channel.channel_identifier) {
+            throw new Error('Missing Telegram chat identifier');
+          }
+
+          await telegram.sendMessage(channel.channel_identifier, releaseMessage, { parse_mode: 'HTML' });
+          await db.updateNotificationStatus(notificationId, 'sent');
         } catch (error) {
           console.error(`Failed to send notification:`, error);
           await db.updateNotificationStatus(
@@ -220,5 +226,64 @@ async function sendReleaseNotifications(
     } catch (error) {
       console.error(`Error processing subscription ${subscription.id}:`, error);
     }
+  }
+}
+
+function getRepoPollState(repo: PollingRepo): PollState | undefined {
+  if (!repo.release_last_seen_id && !repo.release_etag && !repo.release_last_modified) {
+    return undefined;
+  }
+
+  return {
+    lastSeenId: repo.release_last_seen_id || undefined,
+    etag: repo.release_etag || undefined,
+    lastModified: repo.release_last_modified || undefined
+  };
+}
+
+function resolveChannels(channelsJson: string, verifiedChannels: VerifiedChannel[]): Array<{
+  channel_type: string;
+  channel_identifier: string;
+}> {
+  if (verifiedChannels.length > 0) {
+    return verifiedChannels
+      .filter((channel) => Boolean(channel.channel_identifier))
+      .map((channel) => ({
+        channel_type: channel.channel_type,
+        channel_identifier: channel.channel_identifier
+      }));
+  }
+
+  try {
+    const parsed = JSON.parse(channelsJson);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .map((channel: any) => {
+        if (!channel || typeof channel.type !== 'string') {
+          return null;
+        }
+
+        if (channel.type === 'telegram' && typeof channel.chat_id === 'string') {
+          return { channel_type: 'telegram', channel_identifier: channel.chat_id };
+        }
+        if (channel.type === 'email' && typeof channel.address === 'string') {
+          return { channel_type: 'email', channel_identifier: channel.address };
+        }
+        if (channel.type === 'slack' && typeof channel.webhook_url === 'string') {
+          return { channel_type: 'slack', channel_identifier: channel.webhook_url };
+        }
+        if (channel.type === 'webhook' && typeof channel.url === 'string') {
+          return { channel_type: 'webhook', channel_identifier: channel.url };
+        }
+
+        return null;
+      })
+      .filter((channel): channel is { channel_type: string; channel_identifier: string } => channel !== null);
+  } catch (error) {
+    console.warn('Invalid channels_json payload on subscription');
+    return [];
   }
 }
