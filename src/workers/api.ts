@@ -1,7 +1,8 @@
-import type { Env, CreateSubscriptionRequest, ConnectTelegramRequest, GitHubOAuthCallbackRequest, AuthResponse, GenerateConnectionCodeResponse, LinkTelegramRequest } from '../lib/types';
+import type { Env, CreateSubscriptionRequest, UpdateReleaseSubscriptionRequest, ConnectTelegramRequest, GitHubOAuthCallbackRequest, AuthResponse, GenerateConnectionCodeResponse, LinkTelegramRequest } from '../lib/types';
 import { DatabaseService } from '../lib/db';
 import { GitHubAPI } from '../lib/github';
 import { AuthService } from '../lib/auth';
+import { validateReleaseFilters } from '../utils/filters';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -15,7 +16,7 @@ export default {
       const origin = request.headers.get('Origin') || '*';
       const corsHeaders = {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         'Access-Control-Allow-Credentials': 'true',
       };
@@ -492,6 +493,61 @@ export default {
         }));
 
         return new Response(JSON.stringify(response), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        });
+      }
+
+      // PATCH /subscriptions/:id - Update a release subscription's filters
+      if (request.method === 'PATCH' && url.pathname.startsWith('/subscriptions/')) {
+        const subscriptionId = Number.parseInt(url.pathname.split('/')[2] || '', 10);
+        if (Number.isNaN(subscriptionId)) {
+          return new Response(JSON.stringify({ error: 'Invalid subscription ID' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+
+        const authResult = await authenticateUser(request);
+        if (!authResult.success) {
+          return new Response(JSON.stringify({ error: authResult.error }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+
+        const body: UpdateReleaseSubscriptionRequest = await request.json();
+        let filters;
+        try {
+          filters = validateReleaseFilters(body.filters || {});
+        } catch (error) {
+          return new Response(JSON.stringify({
+            error: error instanceof Error ? error.message : 'Invalid release filters'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+
+        const updated = await db.updateReleaseSubscriptionFilters(
+          subscriptionId,
+          authResult.userId!,
+          filters
+        );
+
+        if (!updated) {
+          return new Response(JSON.stringify({
+            error: 'Release subscription not found or you do not have permission to update it'
+          }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+
+        return new Response(JSON.stringify({
+          id: subscriptionId,
+          filters,
+          message: 'Subscription filters updated'
+        }), {
           headers: { 'Content-Type': 'application/json', ...corsHeaders }
         });
       }

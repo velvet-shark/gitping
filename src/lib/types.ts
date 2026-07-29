@@ -154,6 +154,10 @@ export interface CreateSubscriptionRequest {
   channel_ids?: number[]; // for web users with verified channels
 }
 
+export interface UpdateReleaseSubscriptionRequest {
+  filters: ReleaseFilters;
+}
+
 export interface ConnectTelegramRequest {
   user_id: string;
   chat_id: string;

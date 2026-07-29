@@ -276,6 +276,23 @@ export class DatabaseService {
     return (result.results || []) as Array<Subscription & Repo>;
   }
 
+  async updateReleaseSubscriptionFilters(
+    id: number,
+    userId: string,
+    filters: object
+  ): Promise<boolean> {
+    const result = await this.env.DB
+      .prepare(`
+        UPDATE subscriptions
+        SET filters_json = ?
+        WHERE id = ? AND user_id = ? AND kind = 'release'
+      `)
+      .bind(JSON.stringify(filters), id, userId)
+      .run();
+
+    return result.meta.changes > 0;
+  }
+
   async deleteSubscription(id: number, userId: string): Promise<boolean> {
     try {
       // First, delete related notifications

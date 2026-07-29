@@ -48,6 +48,7 @@ export default function DashboardPage() {
   const [connectionCode, setConnectionCode] = useState("");
   const [showConnectionCode, setShowConnectionCode] = useState(false);
   const [showAddRepo, setShowAddRepo] = useState(false);
+  const [updatingSubscriptions, setUpdatingSubscriptions] = useState<number[]>([]);
 
   // Helper function to check if Telegram is already connected
   const hasTelegramChannel = () => {
@@ -256,6 +257,60 @@ export default function DashboardPage() {
       alert(`Failed to delete subscription: ${errorMessage}. Please try again.`);
       // Rollback optimistic update
       setSubscriptions(originalSubscriptions);
+    }
+  };
+
+  const handleStableOnlyChange = async (subscription: Subscription, stableOnly: boolean) => {
+    const originalFilters = subscription.filters;
+    const nextFilters = {
+      ...originalFilters,
+      include_prereleases: !stableOnly
+    };
+
+    setSubscriptions((current) =>
+      current.map((item) =>
+        item.id === subscription.id ? { ...item, filters: nextFilters } : item
+      )
+    );
+    setUpdatingSubscriptions((current) => [...current, subscription.id]);
+
+    try {
+      const token = localStorage.getItem("auth_token");
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://gitping-api.vlvt.sh";
+      const response = await fetch(`${apiUrl}/subscriptions/${subscription.id}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ filters: nextFilters })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update subscription");
+      }
+
+      const updatedSubscription = await response.json();
+      setSubscriptions((current) =>
+        current.map((item) =>
+          item.id === subscription.id
+            ? { ...item, filters: updatedSubscription.filters }
+            : item
+        )
+      );
+    } catch (error) {
+      console.error("Failed to update subscription:", error);
+      setSubscriptions((current) =>
+        current.map((item) =>
+          item.id === subscription.id ? { ...item, filters: originalFilters } : item
+        )
+      );
+      alert("Failed to update the release filter. Please try again.");
+    } finally {
+      setUpdatingSubscriptions((current) =>
+        current.filter((id) => id !== subscription.id)
+      );
     }
   };
 
@@ -587,6 +642,21 @@ Close
                           <p className="text-xs text-black font-medium">
                             Subscribed {formatDateWithRelative(sub.created_at)}
                           </p>
+                          {sub.kind === "release" ? (
+                            <label className="inline-flex items-center gap-2 text-xs text-black font-bold cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={sub.filters?.include_prereleases === false}
+                                onChange={(event) => handleStableOnlyChange(sub, event.target.checked)}
+                                disabled={updatingSubscriptions.includes(sub.id)}
+                                className="h-4 w-4 accent-black disabled:cursor-wait"
+                              />
+                              <span>
+                                Stable release only
+                                {updatingSubscriptions.includes(sub.id) ? " (saving…)" : ""}
+                              </span>
+                            </label>
+                          ) : null}
                           
                           {/* Release information */}
                           {sub.last_release ? (

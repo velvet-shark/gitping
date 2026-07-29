@@ -23,6 +23,7 @@ interface AddRepositoryModalProps {
 export default function AddRepositoryModal({ isOpen, onClose, onSuccess, channels }: AddRepositoryModalProps) {
   const [repoUrl, setRepoUrl] = useState('')
   const [selectedChannels, setSelectedChannels] = useState<number[]>([])
+  const [stableOnly, setStableOnly] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -31,6 +32,7 @@ export default function AddRepositoryModal({ isOpen, onClose, onSuccess, channel
     if (isOpen && channels.length > 0) {
       // Auto-select all channels by default
       setSelectedChannels(channels.map(ch => ch.id))
+      setStableOnly(true)
     }
   }, [isOpen, channels])
 
@@ -93,9 +95,7 @@ export default function AddRepositoryModal({ isOpen, onClose, onSuccess, channel
           repo: `${owner}/${repo}`,
           kind: 'release',
           filters: {
-            stable_only: false,
-            tags: [],
-            prerelease: true
+            include_prereleases: !stableOnly
           },
           channel_ids: selectedChannels
         })
@@ -111,6 +111,7 @@ export default function AddRepositoryModal({ isOpen, onClose, onSuccess, channel
       // Success - reset form
       setRepoUrl('')
       setSelectedChannels([])
+      setStableOnly(true)
       onSuccess(result)
       onClose()
 
@@ -192,6 +193,22 @@ export default function AddRepositoryModal({ isOpen, onClose, onSuccess, channel
             )}
           </div>
 
+          <div className="mb-4">
+            <label className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={stableOnly}
+                onChange={(event) => setStableOnly(event.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                disabled={loading}
+              />
+              <div>
+                <span className="block text-sm font-medium text-gray-900">Stable release only</span>
+                <span className="block text-xs text-gray-500">Skip releases marked as pre-release on GitHub.</span>
+              </div>
+            </label>
+          </div>
+
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-600">{error}</p>
@@ -201,7 +218,7 @@ export default function AddRepositoryModal({ isOpen, onClose, onSuccess, channel
           <div className="text-sm text-gray-500 mb-4">
             <p className="font-medium mb-2">Notification settings:</p>
             <ul className="space-y-1">
-              <li>• All releases (including pre-releases)</li>
+              <li>• {stableOnly ? 'Stable releases only' : 'All releases (including pre-releases)'}</li>
               <li>• Sent to selected channels</li>
               <li>• Real-time notifications</li>
             </ul>
@@ -211,7 +228,7 @@ export default function AddRepositoryModal({ isOpen, onClose, onSuccess, channel
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
               disabled={loading}
             >
               Cancel
@@ -219,7 +236,7 @@ export default function AddRepositoryModal({ isOpen, onClose, onSuccess, channel
             <button
               type="submit"
               disabled={loading || !repoUrl.trim() || channels.length === 0 || selectedChannels.length === 0}
-              className="flex-1 flex items-center justify-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 flex items-center justify-center space-x-2 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
               {loading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
