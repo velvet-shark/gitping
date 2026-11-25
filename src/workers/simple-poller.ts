@@ -124,7 +124,7 @@ async function pollReleasesAndNotify(
           repo.id,
           'release',
           release.id.toString(),
-          release,
+          compactReleasePayload(release),
           Math.floor(Date.parse(release.published_at) / 1000)
         );
         
@@ -227,6 +227,19 @@ async function sendReleaseNotifications(
       console.error(`Error processing subscription ${subscription.id}:`, error);
     }
   }
+}
+
+function compactReleasePayload(release: any) {
+  return {
+    id: release.id,
+    tag_name: release.tag_name,
+    name: release.name,
+    body: typeof release.body === 'string' ? release.body.slice(0, 1000) : '',
+    html_url: release.html_url,
+    published_at: release.published_at,
+    prerelease: Boolean(release.prerelease),
+    draft: Boolean(release.draft)
+  };
 }
 
 function getRepoPollState(repo: PollingRepo): PollState | undefined {

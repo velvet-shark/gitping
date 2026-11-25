@@ -4,6 +4,7 @@ export interface Env {
   DB: D1Database;
   EVENTS: Queue;
   TELEGRAM_BOT_TOKEN: string;
+  TELEGRAM_WEBHOOK_SECRET?: string;
   GITHUB_TOKEN: string;
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;

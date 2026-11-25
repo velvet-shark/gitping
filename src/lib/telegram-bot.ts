@@ -235,10 +235,22 @@ Visit https://gitping.vlvt.sh for setup instructions.`;
       return;
     }
 
-    const repo = args[0];
-    const [owner, name] = repo.split('/');
+    const repo = args[0] || '';
+    const parts = repo.split('/');
+    const [owner, name] = parts;
+    const validSegment = /^[A-Za-z0-9_.-]{1,100}$/;
 
-    if (!owner || !name) {
+    if (
+      parts.length !== 2 ||
+      !owner ||
+      !name ||
+      owner === '.' ||
+      owner === '..' ||
+      name === '.' ||
+      name === '..' ||
+      !validSegment.test(owner) ||
+      !validSegment.test(name)
+    ) {
       await this.telegram.sendMessage(
         chatId,
         '❌ Invalid repository format.\n\n*Usage:* `/subscribe owner/repo`\n*Example:* `/subscribe microsoft/vscode`',

@@ -1,141 +1,228 @@
-import type { Env, CreateSubscriptionRequest, UpdateReleaseSubscriptionRequest, ConnectTelegramRequest, GitHubOAuthCallbackRequest, AuthResponse, GenerateConnectionCodeResponse, LinkTelegramRequest } from '../lib/types';
+import type {
+  Env,
+  CreateSubscriptionRequest,
+  UpdateReleaseSubscriptionRequest,
+  AuthResponse,
+  GenerateConnectionCodeResponse
+} from '../lib/types';
 import { DatabaseService } from '../lib/db';
 import { GitHubAPI } from '../lib/github';
 import { AuthService } from '../lib/auth';
-import { validateReleaseFilters } from '../utils/filters';
+import { validateReleaseFilters, validateCommitFilters } from '../utils/filters';
+
+const REPO_SEGMENT_REGEX = /^[A-Za-z0-9_.-]{1,100}$/;
+const MAX_CHANNEL_IDS_PER_SUBSCRIPTION = 20;
+
+function parsePositiveIntId(raw: string | undefined): number | null {
+  if (!raw || !/^\d+$/.test(raw)) {
+    return null;
+  }
+  const value = Number(raw);
+  return Number.isSafeInteger(value) && value > 0 ? value : null;
+}
+
+function parseRepoSlug(repo: unknown): { owner: string; name: string } | null {
+  if (typeof repo !== 'string') {
+    return null;
+  }
+  const parts = repo.trim().split('/');
+  if (parts.length !== 2) {
+    return null;
+  }
+  const [owner, name] = parts;
+  if (
+    !owner ||
+    !name ||
+    owner === '.' ||
+    owner === '..' ||
+    name === '.' ||
+    name === '..' ||
+    !REPO_SEGMENT_REGEX.test(owner) ||
+    !REPO_SEGMENT_REGEX.test(name)
+  ) {
+    return null;
+  }
+  return { owner, name };
+}
+
+function getCorsHeaders(request: Request, env: Env, url: URL): Record<string, string> {
+  let frontendOrigin = 'https://gitping.vlvt.sh';
+  if (env.FRONTEND_URL) {
+    try {
+      frontendOrigin = new URL(env.FRONTEND_URL).origin;
+    } catch {
+      // Fall back to default production origin
+    }
+  }
+
+  const requestOrigin = request.headers.get('Origin');
+  let allowOrigin = frontendOrigin;
+
+  if (requestOrigin) {
+    if (requestOrigin === frontendOrigin) {
+      allowOrigin = requestOrigin;
+    } else if (
+      (url.hostname === 'localhost' || url.hostname === '127.0.0.1') &&
+      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(requestOrigin)
+    ) {
+      allowOrigin = requestOrigin;
+    }
+  }
+
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Vary': 'Origin',
+  };
+}
+
+async function timingSafeEqual(a: string, b: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const [hashA, hashB] = await Promise.all([
+    crypto.subtle.digest('SHA-256', encoder.encode(a)),
+    crypto.subtle.digest('SHA-256', encoder.encode(b)),
+  ]);
+  const bytesA = new Uint8Array(hashA);
+  const bytesB = new Uint8Array(hashB);
+  let diff = 0;
+  for (let i = 0; i < bytesA.length; i++) {
+    diff |= bytesA[i]! ^ bytesB[i]!;
+  }
+  return diff === 0;
+}
+
+function jsonResponse(
+  body: unknown,
+  status: number,
+  corsHeaders: Record<string, string>,
+  extraHeaders: Record<string, string> = {}
+): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...corsHeaders, ...extraHeaders },
+  });
+}
+
+async function parseJsonBody<T>(request: Request): Promise<T | null> {
+  try {
+    const parsed = await request.json();
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return null;
+    }
+    return parsed as T;
+  } catch {
+    return null;
+  }
+}
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    const corsHeaders = getCorsHeaders(request, env, url);
     const db = new DatabaseService(env);
     const github = new GitHubAPI(env);
     const auth = new AuthService(env);
 
     try {
-      // CORS headers for web clients
-      const origin = request.headers.get('Origin') || '*';
-      const corsHeaders = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Credentials': 'true',
-      };
+      // Strict JWT + active DB session authentication (no unauthenticated user_id fallback)
+      async function authenticateUser(
+        req: Request
+      ): Promise<{ success: true; userId: string; sessionId: string } | { success: false; error: string }> {
+        const token = auth.extractToken(req);
+        if (!token) {
+          return { success: false, error: 'Authentication required' };
+        }
 
-      // Helper function to authenticate user (supports both JWT and direct user_id)
-      async function authenticateUser(request: Request, bodyUserId?: string): Promise<{ success: boolean; userId?: string; error?: string }> {
-        // Try JWT authentication first
-        const token = auth.extractToken(request);
-        if (token) {
-          const payload = await auth.verifyJWT(token);
-          if (payload) {
-            const session = await db.getSession(payload.jti);
-            if (session) {
-              await db.updateSessionLastUsed(payload.jti);
-              return { success: true, userId: payload.sub };
-            }
-          }
+        const payload = await auth.verifyJWT(token);
+        if (!payload || !payload.jti || !payload.sub) {
           return { success: false, error: 'Invalid or expired token' };
         }
 
-        // Fallback to direct user_id (for Telegram bot and backward compatibility)
-        if (bodyUserId) {
-          return { success: true, userId: bodyUserId };
+        const session = await db.getSession(payload.jti);
+        if (!session || session.user_id !== payload.sub) {
+          return { success: false, error: 'Session not found or expired' };
         }
 
-        return { success: false, error: 'Authentication required' };
+        const now = Math.floor(Date.now() / 1000);
+        if (now - session.last_used_at >= 300) {
+          await db.updateSessionLastUsed(payload.jti);
+        }
+
+        return { success: true, userId: payload.sub, sessionId: payload.jti };
       }
 
       if (request.method === 'OPTIONS') {
-        return new Response(null, { headers: corsHeaders });
+        return new Response(null, { status: 204, headers: corsHeaders });
       }
 
       // Authentication endpoints
       // GET /auth/github - Initiate GitHub OAuth flow
       if (request.method === 'GET' && url.pathname === '/auth/github') {
         const state = auth.generateRandomString(16);
-        // Use API_URL for callback, fallback to current URL if not set
         const apiUrl = env.API_URL || `${url.protocol}//${url.host}`;
         const oauthURL = auth.getGitHubOAuthURL(state, apiUrl);
-        
-        return new Response(JSON.stringify({ url: oauthURL, state }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
+
+        return jsonResponse({ url: oauthURL, state }, 200, corsHeaders);
       }
 
-      // GET /auth/callback - Handle GitHub OAuth callback  
+      // GET /auth/callback - Handle GitHub OAuth callback
       if (request.method === 'GET' && url.pathname === '/auth/callback') {
         const code = url.searchParams.get('code');
-        const state = url.searchParams.get('state');
+        const frontendUrl = env.FRONTEND_URL || 'https://gitping.vlvt.sh';
 
         if (!code) {
-          // Redirect to frontend login with error
-          const frontendUrl = env.FRONTEND_URL || 'https://gitping.vlvt.sh';
-          
           return new Response(null, {
             status: 302,
-            headers: { 
-              'Location': `${frontendUrl}/auth/login?error=${encodeURIComponent('No authorization code provided')}`,
-              ...corsHeaders 
-            }
+            headers: {
+              Location: `${frontendUrl}/auth/login?error=${encodeURIComponent('No authorization code provided')}`,
+              ...corsHeaders,
+            },
           });
         }
 
         try {
-          // Exchange code for access token
           const accessToken = await auth.exchangeGitHubCode(code);
           if (!accessToken) throw new Error('Failed to exchange code for access token');
 
-          // Get GitHub user info
           const [githubUser, emails] = await Promise.all([
             auth.getGitHubUser(accessToken),
-            auth.getGitHubUserEmails(accessToken)
+            auth.getGitHubUserEmails(accessToken),
           ]);
 
           if (!githubUser) throw new Error('Failed to get GitHub user info');
 
-          // Find primary email
-          const primaryEmail = emails?.find(e => e.primary)?.email || githubUser.email;
-
-          // Create or update user
+          const primaryEmail = emails?.find((e) => e.primary)?.email || githubUser.email;
           const user = await db.createOrUpdateGitHubUser(githubUser, primaryEmail);
 
-          // Create session
           const sessionId = auth.generateRandomString();
-          const expiresAt = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // 7 days
-          
+          const expiresAt = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60; // 7 days
+
           await db.createSession(
-            sessionId, 
-            user.id, 
+            sessionId,
+            user.id,
             expiresAt,
             request.headers.get('User-Agent') || undefined,
             request.headers.get('CF-Connecting-IP') || undefined
           );
 
-          // Generate JWT token
           const token = await auth.createJWT(user.id, sessionId);
 
-          // Redirect to frontend auth callback with token
-          const frontendUrl = env.FRONTEND_URL || 'https://gitping.vlvt.sh';
-          
           return new Response(null, {
             status: 302,
-            headers: { 
-              'Location': `${frontendUrl}/auth/callback?token=${encodeURIComponent(token)}`,
-              ...corsHeaders 
-            }
+            headers: {
+              Location: `${frontendUrl}/auth/callback?token=${encodeURIComponent(token)}`,
+              ...corsHeaders,
+            },
           });
-
         } catch (error) {
-          // Redirect to frontend login with error message
-          const frontendUrl = env.FRONTEND_URL || 'https://gitping.vlvt.sh';
-          const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
-          
+          console.error('OAuth callback error:', error);
           return new Response(null, {
             status: 302,
-            headers: { 
-              'Location': `${frontendUrl}/auth/login?error=${encodeURIComponent(errorMessage)}`,
-              ...corsHeaders 
-            }
+            headers: {
+              Location: `${frontendUrl}/auth/login?error=${encodeURIComponent('Authentication failed')}`,
+              ...corsHeaders,
+            },
           });
         }
       }
@@ -143,574 +230,465 @@ export default {
       // POST /auth/logout - Clear session
       if (request.method === 'POST' && url.pathname === '/auth/logout') {
         const token = auth.extractToken(request);
-        
+
         if (token) {
           const payload = await auth.verifyJWT(token);
-          if (payload) {
+          if (payload?.jti) {
             await db.deleteSession(payload.jti);
           }
         }
 
-        return new Response(JSON.stringify({ success: true }), {
-          headers: { 
-            'Content-Type': 'application/json',
-            'Set-Cookie': auth.createLogoutCookie(),
-            ...corsHeaders 
-          }
+        return jsonResponse({ success: true }, 200, corsHeaders, {
+          'Set-Cookie': auth.createLogoutCookie(),
         });
       }
 
       // GET /auth/me - Get current user info
       if (request.method === 'GET' && url.pathname === '/auth/me') {
-        const token = auth.extractToken(request);
-        
-        if (!token) {
-          return new Response(JSON.stringify({ success: false, error: 'No token provided' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
+        const authResult = await authenticateUser(request);
+        if (!authResult.success) {
+          return jsonResponse({ success: false, error: authResult.error }, 401, corsHeaders);
         }
 
-        const payload = await auth.verifyJWT(token);
-        if (!payload) {
-          return new Response(JSON.stringify({ success: false, error: 'Invalid or expired token' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
-        }
-
-        // Verify session still exists
-        const session = await db.getSession(payload.jti);
-        if (!session) {
-          return new Response(JSON.stringify({ success: false, error: 'Session not found' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
-        }
-
-        // Update last used timestamp
-        await db.updateSessionLastUsed(payload.jti);
-
-        // Get user info
-        const user = await db.getUser(payload.sub);
+        const user = await db.getUser(authResult.userId);
         if (!user) {
-          return new Response(JSON.stringify({ success: false, error: 'User not found' }), {
-            status: 404,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
+          return jsonResponse({ success: false, error: 'User not found' }, 404, corsHeaders);
         }
 
         const response: AuthResponse = { success: true, user };
-        return new Response(JSON.stringify(response), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
+        return jsonResponse(response, 200, corsHeaders);
       }
 
       // POST /auth/connection-code - Generate Telegram connection code
       if (request.method === 'POST' && url.pathname === '/auth/connection-code') {
-        const token = auth.extractToken(request);
-        
-        if (!token) {
-          return new Response(JSON.stringify({ error: 'Authentication required' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
+        const authResult = await authenticateUser(request);
+        if (!authResult.success) {
+          return jsonResponse({ error: authResult.error }, 401, corsHeaders);
         }
 
-        const payload = await auth.verifyJWT(token);
-        if (!payload) {
-          return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
-        }
-
-        // Generate connection code (expires in 10 minutes)
         const code = auth.generateConnectionCode();
-        const expiresAt = Math.floor(Date.now() / 1000) + (10 * 60);
-        
-        console.log(`Creating connection code ${code} for user ${payload.sub}`);
-        await db.createConnectionCode(code, payload.sub, expiresAt);
+        const expiresAt = Math.floor(Date.now() / 1000) + 10 * 60;
+
+        await db.createConnectionCode(code, authResult.userId, expiresAt);
 
         const response: GenerateConnectionCodeResponse = { code, expires_at: expiresAt };
-        return new Response(JSON.stringify(response), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
+        return jsonResponse(response, 200, corsHeaders);
       }
 
       // GET /channels - Get user's verified channels
       if (request.method === 'GET' && url.pathname === '/channels') {
-        const token = auth.extractToken(request);
-        
-        if (!token) {
-          return new Response(JSON.stringify({ error: 'Authentication required' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
+        const authResult = await authenticateUser(request);
+        if (!authResult.success) {
+          return jsonResponse({ error: authResult.error }, 401, corsHeaders);
         }
 
-        const payload = await auth.verifyJWT(token);
-        if (!payload) {
-          return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
-        }
-
-        const channels = await db.getUserVerifiedChannels(payload.sub);
-        
-        return new Response(JSON.stringify(channels), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
+        const channels = await db.getUserVerifiedChannels(authResult.userId);
+        return jsonResponse(channels, 200, corsHeaders);
       }
 
       // DELETE /channels/:id - Remove a verified channel
       if (request.method === 'DELETE' && url.pathname.startsWith('/channels/')) {
-        const channelId = parseInt(url.pathname.split('/')[2]);
-        
-        const token = auth.extractToken(request);
-        if (!token) {
-          return new Response(JSON.stringify({ error: 'Authentication required' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
+        const authResult = await authenticateUser(request);
+        if (!authResult.success) {
+          return jsonResponse({ error: authResult.error }, 401, corsHeaders);
         }
 
-        const payload = await auth.verifyJWT(token);
-        if (!payload) {
-          return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
-        }
-
-        if (isNaN(channelId)) {
-          return new Response(JSON.stringify({ error: 'Invalid channel ID' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
+        const pathParts = url.pathname.split('/');
+        const channelId = pathParts.length === 3 ? parsePositiveIntId(pathParts[2]) : null;
+        if (channelId === null) {
+          return jsonResponse({ error: 'Invalid channel ID' }, 400, corsHeaders);
         }
 
         try {
-          console.log(`Deleting channel ${channelId} for user ${payload.sub}`);
-          
-          // Remove channel from all subscriptions first
-          await db.removeChannelFromSubscriptions(channelId);
-          
-          // Delete the channel
-          const deleted = await db.deleteVerifiedChannel(channelId, payload.sub);
-          
-          console.log(`Channel deletion result: ${deleted}`);
-          
+          const deleted = await db.deleteVerifiedChannel(channelId, authResult.userId);
           if (deleted) {
-            return new Response(JSON.stringify({ message: 'Channel removed successfully' }), {
-              headers: { 'Content-Type': 'application/json', ...corsHeaders }
-            });
-          } else {
-            return new Response(JSON.stringify({ error: 'Channel not found' }), {
-              status: 404,
-              headers: { 'Content-Type': 'application/json', ...corsHeaders }
-            });
+            return jsonResponse({ message: 'Channel removed successfully' }, 200, corsHeaders);
           }
+          return jsonResponse({ error: 'Channel not found' }, 404, corsHeaders);
         } catch (error) {
           console.error('Error deleting channel:', error);
-          return new Response(JSON.stringify({ 
-            error: 'Failed to delete channel',
-            message: error instanceof Error ? error.message : 'Unknown error'
-          }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
+          return jsonResponse({ error: 'Failed to delete channel' }, 500, corsHeaders);
         }
       }
 
       // POST /subscriptions - Create a new subscription
       if (request.method === 'POST' && url.pathname === '/subscriptions') {
-        const body: CreateSubscriptionRequest = await request.json();
-        
-        // Authenticate user
-        const authResult = await authenticateUser(request, body.user_id);
+        const authResult = await authenticateUser(request);
         if (!authResult.success) {
-          return new Response(JSON.stringify({ error: authResult.error }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
+          return jsonResponse({ error: authResult.error }, 401, corsHeaders);
         }
 
-        // Validate input - either channels (for Telegram bot) or channel_ids (for web users)
-        if (!body.repo || !body.kind || (!body.channels?.length && !body.channel_ids?.length)) {
-          return new Response(JSON.stringify({ error: 'Missing required fields' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
+        const body = await parseJsonBody<CreateSubscriptionRequest>(request);
+        if (!body) {
+          return jsonResponse({ error: 'Invalid JSON body' }, 400, corsHeaders);
         }
 
-        const [owner, name] = body.repo.split('/');
-        if (!owner || !name) {
-          return new Response(JSON.stringify({ error: 'Invalid repo format. Use owner/name' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
+        const parsedRepo = parseRepoSlug(body.repo);
+        if (!parsedRepo) {
+          return jsonResponse({ error: 'Invalid repo format. Use owner/name' }, 400, corsHeaders);
         }
 
-        // Validate repo exists
+        if (body.kind !== 'release' && body.kind !== 'commit') {
+          return jsonResponse({ error: 'Invalid subscription kind' }, 400, corsHeaders);
+        }
+
+        if (
+          !Array.isArray(body.channel_ids) ||
+          body.channel_ids.length === 0 ||
+          body.channel_ids.length > MAX_CHANNEL_IDS_PER_SUBSCRIPTION
+        ) {
+          return jsonResponse(
+            { error: 'channel_ids must be a non-empty array of valid channel IDs' },
+            400,
+            corsHeaders
+          );
+        }
+
+        const uniqueChannelIds: number[] = [];
+        const seenChannelIds = new Set<number>();
+        for (const rawId of body.channel_ids) {
+          if (typeof rawId !== 'number' || !Number.isSafeInteger(rawId) || rawId <= 0) {
+            return jsonResponse(
+              { error: 'channel_ids must contain only positive integers' },
+              400,
+              corsHeaders
+            );
+          }
+          if (!seenChannelIds.has(rawId)) {
+            seenChannelIds.add(rawId);
+            uniqueChannelIds.push(rawId);
+          }
+        }
+
+        let validatedFilters: object;
+        try {
+          validatedFilters =
+            body.kind === 'release'
+              ? validateReleaseFilters(body.filters || {})
+              : validateCommitFilters(body.filters || {});
+        } catch (error) {
+          return jsonResponse(
+            { error: error instanceof Error ? error.message : 'Invalid filters' },
+            400,
+            corsHeaders
+          );
+        }
+
+        // Verify that every requested channel belongs to the authenticated user
+        const ownedChannels = await db.getUserVerifiedChannelsByIds(
+          authResult.userId,
+          uniqueChannelIds
+        );
+        if (ownedChannels.length !== uniqueChannelIds.length) {
+          return jsonResponse(
+            { error: 'One or more selected channels were not found or do not belong to you' },
+            403,
+            corsHeaders
+          );
+        }
+
+        const { owner, name } = parsedRepo;
+
+        // Validate repo exists on GitHub
         try {
           await github.getRepository(owner, name);
-        } catch (error) {
-          return new Response(JSON.stringify({ error: 'Repository not found or not accessible' }), {
-            status: 404,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
+        } catch {
+          return jsonResponse(
+            { error: 'Repository not found or not accessible' },
+            404,
+            corsHeaders
+          );
         }
 
-        // Create or get repo
         const repoId = await db.createRepo(owner, name);
-        
-        // Create or get user (required for foreign key constraint)
-        await db.createUser(authResult.userId!);
-        
-        // Create subscription
+        await db.createUser(authResult.userId);
+
         const subscriptionId = await db.createSubscription(
-          authResult.userId!,
+          authResult.userId,
           repoId,
           body.kind,
-          body.filters || {},
-          body.channels || [] // Use empty array for web users
+          validatedFilters,
+          []
         );
 
-        // If using verified channels (web users), create subscription_channels relationships
-        if (body.channel_ids?.length) {
-          await db.createSubscriptionChannels(subscriptionId, body.channel_ids);
-        }
+        await db.createSubscriptionChannels(subscriptionId, uniqueChannelIds);
 
         // Fetch latest release info for the new subscription
         let last_release = null;
         try {
           const result = await github.getReleases(owner, name);
           const releases = result.releases;
-          
+
           if (releases && releases.length > 0) {
-            const release = releases[0];
+            const release = releases[0]!;
             last_release = {
               tag_name: release.tag_name,
               published_at: release.published_at,
-              html_url: release.html_url
+              html_url: release.html_url,
             };
           }
         } catch (error) {
           console.log(`Failed to fetch releases for ${owner}/${name}:`, error);
-          // Continue without release info if fetch fails
         }
 
-        // Get channel information for response
-        let responseChannels = body.channels || [];
-        if (body.channel_ids?.length) {
-          // For web users, get the verified channels
-          const verifiedChannels = await db.getSubscriptionChannels(subscriptionId);
-          responseChannels = verifiedChannels.map(ch => ({
-            type: ch.channel_type as 'telegram',
-            chat_id: ch.channel_identifier,
-            display_name: ch.display_name
-          }));
-        }
+        const responseChannels = ownedChannels.map((ch) => ({
+          type: ch.channel_type as 'telegram',
+          chat_id: ch.channel_identifier,
+          display_name: ch.display_name,
+        }));
 
-        // Return complete subscription object
         const newSubscription = {
           id: subscriptionId,
           repo: `${owner}/${name}`,
           kind: body.kind,
-          filters: body.filters || {},
+          filters: validatedFilters,
           channels: responseChannels,
           created_at: Math.floor(Date.now() / 1000),
-          last_release
+          last_release,
         };
 
-        return new Response(JSON.stringify({ 
-          ...newSubscription,
-          message: 'Subscription created successfully' 
-        }), {
-          status: 201,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
+        return jsonResponse(
+          { ...newSubscription, message: 'Subscription created successfully' },
+          201,
+          corsHeaders
+        );
       }
 
       // GET /subscriptions - Get user's subscriptions
       if (request.method === 'GET' && url.pathname === '/subscriptions') {
-        // Authenticate user (support both JWT and user_id parameter)
-        const userIdParam = url.searchParams.get('user_id');
-        const authResult = await authenticateUser(request, userIdParam);
+        const authResult = await authenticateUser(request);
         if (!authResult.success) {
-          return new Response(JSON.stringify({ error: authResult.error }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
+          return jsonResponse({ error: authResult.error }, 401, corsHeaders);
         }
 
-        const subscriptions = await db.getUserSubscriptions(authResult.userId!);
-        
-        // Fetch latest release info for each repository
-        const response = await Promise.all(subscriptions.map(async (sub) => {
-          let last_release = null;
-          
-          try {
-            // Get latest release from GitHub API
-            const result = await github.getReleases(sub.owner, sub.name);
-            const releases = result.releases;
-            if (releases && releases.length > 0) {
-              const release = releases[0];
-              last_release = {
-                tag_name: release.tag_name,
-                published_at: release.published_at,
-                html_url: release.html_url
-              };
+        const subscriptions = await db.getUserSubscriptions(authResult.userId);
+        const channelsBySubscription = authResult.userId.startsWith('github_')
+          ? await db.getChannelsForSubscriptions(subscriptions.map((sub) => sub.id))
+          : new Map();
+
+        const response = await Promise.all(
+          subscriptions.map(async (sub) => {
+            let last_release = null;
+
+            try {
+              const result = await github.getReleases(sub.owner, sub.name);
+              const releases = result.releases;
+              if (releases && releases.length > 0) {
+                const release = releases[0]!;
+                last_release = {
+                  tag_name: release.tag_name,
+                  published_at: release.published_at,
+                  html_url: release.html_url,
+                };
+              }
+            } catch (error) {
+              console.log(`Failed to fetch releases for ${sub.owner}/${sub.name}:`, error);
             }
-          } catch (error) {
-            console.log(`Failed to fetch releases for ${sub.owner}/${sub.name}:`, error);
-            // Continue without release info if fetch fails
-          }
 
-          // Determine if this is a web user (github_*) or Telegram-only user
-          let channels = JSON.parse(sub.channels_json);
-          if (authResult.userId!.startsWith('github_')) {
-            // For web users, get verified channels
-            const verifiedChannels = await db.getSubscriptionChannels(sub.id);
-            channels = verifiedChannels.map(ch => ({
-              type: ch.channel_type,
-              chat_id: ch.channel_identifier,
-              display_name: ch.display_name
-            }));
-          }
+            let channels = JSON.parse(sub.channels_json);
+            if (authResult.userId.startsWith('github_')) {
+              const verifiedChannels = channelsBySubscription.get(sub.id) || [];
+              channels = verifiedChannels.map((ch: any) => ({
+                type: ch.channel_type,
+                chat_id: ch.channel_identifier,
+                display_name: ch.display_name,
+              }));
+            }
 
-          return {
-            id: sub.id,
-            repo: `${sub.owner}/${sub.name}`,
-            kind: sub.kind,
-            filters: JSON.parse(sub.filters_json),
-            channels: channels,
-            created_at: sub.created_at,
-            last_release
-          };
-        }));
+            return {
+              id: sub.id,
+              repo: `${sub.owner}/${sub.name}`,
+              kind: sub.kind,
+              filters: JSON.parse(sub.filters_json),
+              channels,
+              created_at: sub.created_at,
+              last_release,
+            };
+          })
+        );
 
-        return new Response(JSON.stringify(response), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
+        return jsonResponse(response, 200, corsHeaders);
       }
 
       // PATCH /subscriptions/:id - Update a release subscription's filters
       if (request.method === 'PATCH' && url.pathname.startsWith('/subscriptions/')) {
-        const subscriptionId = Number.parseInt(url.pathname.split('/')[2] || '', 10);
-        if (Number.isNaN(subscriptionId)) {
-          return new Response(JSON.stringify({ error: 'Invalid subscription ID' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
-        }
-
         const authResult = await authenticateUser(request);
         if (!authResult.success) {
-          return new Response(JSON.stringify({ error: authResult.error }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
+          return jsonResponse({ error: authResult.error }, 401, corsHeaders);
         }
 
-        const body: UpdateReleaseSubscriptionRequest = await request.json();
+        const pathParts = url.pathname.split('/');
+        const subscriptionId = pathParts.length === 3 ? parsePositiveIntId(pathParts[2]) : null;
+        if (subscriptionId === null) {
+          return jsonResponse({ error: 'Invalid subscription ID' }, 400, corsHeaders);
+        }
+
+        const body = await parseJsonBody<UpdateReleaseSubscriptionRequest>(request);
+        if (!body) {
+          return jsonResponse({ error: 'Invalid JSON body' }, 400, corsHeaders);
+        }
+
         let filters;
         try {
           filters = validateReleaseFilters(body.filters || {});
         } catch (error) {
-          return new Response(JSON.stringify({
-            error: error instanceof Error ? error.message : 'Invalid release filters'
-          }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
+          return jsonResponse(
+            { error: error instanceof Error ? error.message : 'Invalid release filters' },
+            400,
+            corsHeaders
+          );
         }
 
         const updated = await db.updateReleaseSubscriptionFilters(
           subscriptionId,
-          authResult.userId!,
+          authResult.userId,
           filters
         );
 
         if (!updated) {
-          return new Response(JSON.stringify({
-            error: 'Release subscription not found or you do not have permission to update it'
-          }), {
-            status: 404,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
+          return jsonResponse(
+            { error: 'Release subscription not found or you do not have permission to update it' },
+            404,
+            corsHeaders
+          );
         }
 
-        return new Response(JSON.stringify({
-          id: subscriptionId,
-          filters,
-          message: 'Subscription filters updated'
-        }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
+        return jsonResponse(
+          { id: subscriptionId, filters, message: 'Subscription filters updated' },
+          200,
+          corsHeaders
+        );
       }
 
       // DELETE /subscriptions/:id - Delete a subscription
       if (request.method === 'DELETE' && url.pathname.startsWith('/subscriptions/')) {
+        const authResult = await authenticateUser(request);
+        if (!authResult.success) {
+          return jsonResponse({ error: authResult.error }, 401, corsHeaders);
+        }
+
+        const pathParts = url.pathname.split('/');
+        const subscriptionId = pathParts.length === 3 ? parsePositiveIntId(pathParts[2]) : null;
+        if (subscriptionId === null) {
+          return jsonResponse({ error: 'Invalid subscription ID' }, 400, corsHeaders);
+        }
+
         try {
-          const subscriptionId = parseInt(url.pathname.split('/')[2]);
-          const userIdParam = url.searchParams.get('user_id');
-
-          // Authenticate user
-          const authResult = await authenticateUser(request, userIdParam);
-          if (!authResult.success) {
-            return new Response(JSON.stringify({ error: authResult.error }), {
-              status: 401,
-              headers: { 'Content-Type': 'application/json', ...corsHeaders }
-            });
-          }
-
-          if (isNaN(subscriptionId)) {
-            return new Response(JSON.stringify({ error: 'Invalid subscription ID' }), {
-              status: 400,
-              headers: { 'Content-Type': 'application/json', ...corsHeaders }
-            });
-          }
-
-          console.log(`Deleting subscription ${subscriptionId} for user ${authResult.userId}`);
-          const deleted = await db.deleteSubscription(subscriptionId, authResult.userId!);
-          console.log(`Delete result: ${deleted}`);
-          
+          const deleted = await db.deleteSubscription(subscriptionId, authResult.userId);
           if (deleted) {
-            return new Response(JSON.stringify({ message: 'Subscription deleted' }), {
-              headers: { 'Content-Type': 'application/json', ...corsHeaders }
-            });
-          } else {
-            return new Response(JSON.stringify({ error: 'Subscription not found or you do not have permission to delete it' }), {
-              status: 404,
-              headers: { 'Content-Type': 'application/json', ...corsHeaders }
-            });
+            return jsonResponse({ message: 'Subscription deleted' }, 200, corsHeaders);
           }
+          return jsonResponse(
+            { error: 'Subscription not found or you do not have permission to delete it' },
+            404,
+            corsHeaders
+          );
         } catch (deleteError) {
           console.error('Error in DELETE /subscriptions:', deleteError);
-          return new Response(JSON.stringify({ 
-            error: 'Failed to delete subscription',
-            details: deleteError instanceof Error ? deleteError.message : 'Unknown error'
-          }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
+          return jsonResponse({ error: 'Failed to delete subscription' }, 500, corsHeaders);
         }
       }
 
-      // POST /connect/telegram - Connect Telegram account
-      if (request.method === 'POST' && url.pathname === '/connect/telegram') {
-        const body: ConnectTelegramRequest = await request.json();
-        
-        if (!body.user_id || !body.chat_id) {
-          return new Response(JSON.stringify({ error: 'Missing user_id or chat_id' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
-        }
-
-        await db.createUser(body.user_id, body.chat_id);
-
-        return new Response(JSON.stringify({ 
-          message: 'Telegram account connected successfully' 
-        }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
-      }
-
-      // GET /events - Get recent events
+      // GET /events - Get recent events (authenticated)
       if (request.method === 'GET' && url.pathname === '/events') {
+        const authResult = await authenticateUser(request);
+        if (!authResult.success) {
+          return jsonResponse({ error: authResult.error }, 401, corsHeaders);
+        }
+
         const repoParam = url.searchParams.get('repo');
-        const kind = url.searchParams.get('kind') as 'release' | 'commit' | null;
-        const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 200);
-        const offset = parseInt(url.searchParams.get('offset') || '0');
+        const kindParam = url.searchParams.get('kind');
+        if (kindParam && kindParam !== 'release' && kindParam !== 'commit') {
+          return jsonResponse({ error: 'Invalid event kind' }, 400, corsHeaders);
+        }
+        const kind = (kindParam as 'release' | 'commit' | null) || undefined;
+
+        const rawLimit = Number.parseInt(url.searchParams.get('limit') || '50', 10);
+        const rawOffset = Number.parseInt(url.searchParams.get('offset') || '0', 10);
+        const limit = Number.isNaN(rawLimit) ? 50 : Math.max(1, Math.min(rawLimit, 50));
+        const offset = Number.isNaN(rawOffset) ? 0 : Math.max(0, rawOffset);
 
         let repoId: number | undefined;
         if (repoParam) {
-          const [owner, name] = repoParam.split('/');
-          if (owner && name) {
-            const repo = await db.getRepo(owner, name);
-            repoId = repo?.id;
+          const parsedRepo = parseRepoSlug(repoParam);
+          if (!parsedRepo) {
+            return jsonResponse({ error: 'Invalid repo format. Use owner/name' }, 400, corsHeaders);
           }
+          const repo = await db.getRepo(parsedRepo.owner, parsedRepo.name);
+          if (!repo) {
+            return jsonResponse([], 200, corsHeaders);
+          }
+          repoId = repo.id;
         }
 
-        const events = await db.getEvents(repoId, kind || undefined, limit, offset);
-        
-        const response = events.map(event => ({
+        const events = await db.getEvents(repoId, kind, limit, offset);
+        const response = events.map((event) => ({
           id: event.id,
           kind: event.kind,
           external_id: event.external_id,
           occurred_at: event.occurred_at,
-          payload: JSON.parse(event.payload_json)
+          payload: JSON.parse(event.payload_json),
         }));
 
-        return new Response(JSON.stringify(response), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
+        return jsonResponse(response, 200, corsHeaders);
       }
 
       // GET /health - Health check
       if (request.method === 'GET' && url.pathname === '/health') {
-        return new Response(JSON.stringify({ 
-          status: 'ok',
-          timestamp: Date.now()
-        }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
+        return jsonResponse({ status: 'ok', timestamp: Date.now() }, 200, corsHeaders);
       }
 
       // Telegram webhook handler (for bot commands)
       if (request.method === 'POST' && url.pathname === '/webhook/telegram') {
+        if (!env.TELEGRAM_WEBHOOK_SECRET) {
+          console.error('TELEGRAM_WEBHOOK_SECRET is not configured');
+          return new Response(JSON.stringify({ error: 'Webhook not configured' }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        const providedSecret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
+        if (!providedSecret || !(await timingSafeEqual(providedSecret, env.TELEGRAM_WEBHOOK_SECRET))) {
+          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
         try {
-          const update = await request.json();
-          console.log('Webhook received update:', JSON.stringify(update, null, 2));
-          
-          // Import and use the Telegram bot handler
+          const update = await parseJsonBody<any>(request);
+          if (!update) {
+            return new Response(JSON.stringify({ error: 'Invalid update payload' }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            });
+          }
+
           const { TelegramBot } = await import('../lib/telegram-bot');
           const { TelegramAPI } = await import('../lib/telegram');
-          
+
           const telegramAPI = new TelegramAPI(env);
           const bot = new TelegramBot(env, db, telegramAPI);
-          
+
           await bot.handleUpdate(update);
 
           return new Response(JSON.stringify({ status: 'ok' }), {
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
           });
         } catch (error) {
           console.error('Webhook error:', error);
-          return new Response(JSON.stringify({ 
-            error: 'Webhook processing failed',
-            message: error instanceof Error ? error.message : 'Unknown error'
-          }), {
+          return new Response(JSON.stringify({ error: 'Webhook processing failed' }), {
             status: 500,
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
           });
         }
       }
 
-      return new Response(JSON.stringify({ error: 'Not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      });
-
+      return jsonResponse({ error: 'Not found' }, 404, corsHeaders);
     } catch (error) {
       console.error('API Error:', error);
-      const corsHeaders = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Credentials': 'true',
-      };
-      return new Response(JSON.stringify({ 
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      });
+      return jsonResponse({ error: 'Internal server error' }, 500, corsHeaders);
     }
-  }
+  },
 };

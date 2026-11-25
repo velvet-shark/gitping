@@ -29,11 +29,6 @@ export class TelegramAPI {
       reply_markup: options.reply_markup
     };
 
-    console.log('Telegram API request:', {
-      url,
-      body: JSON.stringify(body, null, 2)
-    });
-
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -47,11 +42,8 @@ export class TelegramAPI {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`Telegram API error: ${response.status} ${errorText}`);
-      throw new Error(`Telegram API error: ${response.status} ${errorText}`);
+      throw new Error(`Telegram API error: ${response.status}`);
     }
-    
-    const responseText = await response.text();
-    console.log('Telegram API response body:', responseText);
   }
 
   formatReleaseMessage(
@@ -169,13 +161,16 @@ export class TelegramAPI {
     return message;
   }
 
-  async setWebhook(webhookUrl: string): Promise<void> {
+  async setWebhook(webhookUrl: string, secretToken?: string): Promise<void> {
     const url = `${this.apiUrl}/setWebhook`;
     
-    const body = {
+    const body: Record<string, unknown> = {
       url: webhookUrl,
-      allowed_updates: ['message']
+      allowed_updates: ['message', 'callback_query']
     };
+    if (secretToken) {
+      body.secret_token = secretToken;
+    }
 
     const response = await fetch(url, {
       method: 'POST',

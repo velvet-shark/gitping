@@ -135,8 +135,10 @@ CREATE INDEX IF NOT EXISTS idx_subs_user_repo ON subscriptions(user_id, repo_id)
 CREATE INDEX IF NOT EXISTS idx_subs_repo_kind ON subscriptions(repo_id, kind);
 CREATE INDEX IF NOT EXISTS idx_events_repo_kind ON events(repo_id, kind, occurred_at);
 CREATE INDEX IF NOT EXISTS idx_events_inserted ON events(inserted_at);
+CREATE INDEX IF NOT EXISTS idx_events_occurred_at ON events(occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications(status, attempts);
 CREATE INDEX IF NOT EXISTS idx_notifications_event ON notifications(event_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_subscription ON notifications(subscription_id);
 CREATE INDEX IF NOT EXISTS idx_repos_polling ON repos(last_polled_at, consecutive_errors);
 CREATE INDEX IF NOT EXISTS idx_repo_poll_states_updated ON repo_poll_states(updated_at);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);

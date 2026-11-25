@@ -295,25 +295,29 @@ export class DatabaseService {
 
   async deleteSubscription(id: number, userId: string): Promise<boolean> {
     try {
-      // First, delete related notifications
-      await this.env.DB
-        .prepare('DELETE FROM notifications WHERE subscription_id = ?')
-        .bind(id)
-        .run();
-
-      // Then, delete related subscription_channels records
-      await this.env.DB
-        .prepare('DELETE FROM subscription_channels WHERE subscription_id = ?')
-        .bind(id)
-        .run();
-
-      // Finally, delete the subscription
-      const result = await this.env.DB
-        .prepare('DELETE FROM subscriptions WHERE id = ? AND user_id = ?')
+      // Verify ownership before touching child records to prevent IDOR
+      const existing = await this.env.DB
+        .prepare('SELECT id FROM subscriptions WHERE id = ? AND user_id = ?')
         .bind(id, userId)
-        .run();
+        .first<{ id: number }>();
 
-      return result.meta.changes > 0;
+      if (!existing) {
+        return false;
+      }
+
+      const results = await this.env.DB.batch([
+        this.env.DB
+          .prepare('DELETE FROM notifications WHERE subscription_id = ?')
+          .bind(id),
+        this.env.DB
+          .prepare('DELETE FROM subscription_channels WHERE subscription_id = ?')
+          .bind(id),
+        this.env.DB
+          .prepare('DELETE FROM subscriptions WHERE id = ? AND user_id = ?')
+          .bind(id, userId)
+      ]);
+
+      return (results[2]?.meta?.changes ?? 0) > 0;
     } catch (error) {
       console.error('Error deleting subscription:', error);
       throw error;
@@ -597,38 +601,86 @@ export class DatabaseService {
     return result as VerifiedChannel | null;
   }
 
+  async getUserVerifiedChannelsByIds(userId: string, channelIds: number[]): Promise<VerifiedChannel[]> {
+    const uniqueChannelIds = Array.from(new Set(channelIds));
+    if (uniqueChannelIds.length === 0) {
+      return [];
+    }
+
+    for (const channelId of uniqueChannelIds) {
+      if (!Number.isSafeInteger(channelId) || channelId <= 0) {
+        throw new Error('Invalid channel ID');
+      }
+    }
+
+    const channels: VerifiedChannel[] = [];
+    const chunkSize = 90;
+    for (let i = 0; i < uniqueChannelIds.length; i += chunkSize) {
+      const chunk = uniqueChannelIds.slice(i, i + chunkSize);
+      const placeholders = chunk.map(() => '?').join(', ');
+      const result = await this.env.DB
+        .prepare(`SELECT * FROM verified_channels WHERE user_id = ? AND id IN (${placeholders}) ORDER BY created_at ASC`)
+        .bind(userId, ...chunk)
+        .all();
+
+      channels.push(...((result.results || []) as unknown as VerifiedChannel[]));
+    }
+
+    return channels;
+  }
+
   async deleteVerifiedChannel(channelId: number, userId: string): Promise<boolean> {
-    console.log(`Attempting to delete verified channel ${channelId} for user ${userId}`);
-    
-    // First check if the channel exists
+    // Verify ownership before removing links from subscription_channels
     const existingChannel = await this.env.DB
-      .prepare('SELECT * FROM verified_channels WHERE id = ? AND user_id = ?')
+      .prepare('SELECT id FROM verified_channels WHERE id = ? AND user_id = ?')
       .bind(channelId, userId)
-      .first();
-    
-    console.log('Existing channel before deletion:', existingChannel);
-    
-    const result = await this.env.DB
-      .prepare('DELETE FROM verified_channels WHERE id = ? AND user_id = ?')
-      .bind(channelId, userId)
-      .run();
-    
-    console.log('Delete result:', {
-      changes: result.changes,
-      meta: result.meta
-    });
-    
-    return result.meta.changes > 0;
+      .first<{ id: number }>();
+
+    if (!existingChannel) {
+      return false;
+    }
+
+    const results = await this.env.DB.batch([
+      this.env.DB
+        .prepare('DELETE FROM subscription_channels WHERE channel_id = ?')
+        .bind(channelId),
+      this.env.DB
+        .prepare('DELETE FROM verified_channels WHERE id = ? AND user_id = ?')
+        .bind(channelId, userId)
+    ]);
+
+    return (results[1]?.meta?.changes ?? 0) > 0;
   }
 
   // Subscription Channels (many-to-many relationship)
   async createSubscriptionChannels(subscriptionId: number, channelIds: number[]): Promise<void> {
-    if (channelIds.length === 0) return;
+    if (!Number.isSafeInteger(subscriptionId) || subscriptionId <= 0) {
+      throw new Error('Invalid subscription ID');
+    }
 
-    const values = channelIds.map((channelId) => `(${subscriptionId}, ${channelId})`).join(', ');
-    await this.env.DB
-      .prepare(`INSERT OR IGNORE INTO subscription_channels (subscription_id, channel_id) VALUES ${values}`)
-      .run();
+    const uniqueChannelIds = Array.from(new Set(channelIds));
+    if (uniqueChannelIds.length === 0) return;
+
+    for (const channelId of uniqueChannelIds) {
+      if (!Number.isSafeInteger(channelId) || channelId <= 0) {
+        throw new Error('Invalid channel ID');
+      }
+    }
+
+    const chunkSize = 40; // 80 bind parameters max per statement (D1 limit is 100)
+    for (let i = 0; i < uniqueChannelIds.length; i += chunkSize) {
+      const chunk = uniqueChannelIds.slice(i, i + chunkSize);
+      const placeholders = chunk.map(() => '(?, ?)').join(', ');
+      const params: number[] = [];
+      for (const channelId of chunk) {
+        params.push(subscriptionId, channelId);
+      }
+
+      await this.env.DB
+        .prepare(`INSERT OR IGNORE INTO subscription_channels (subscription_id, channel_id) VALUES ${placeholders}`)
+        .bind(...params)
+        .run();
+    }
   }
 
   async getSubscriptionChannels(subscriptionId: number): Promise<VerifiedChannel[]> {
@@ -652,26 +704,30 @@ export class DatabaseService {
       return channelsBySubscription;
     }
 
-    const placeholders = subscriptionIds.map(() => '?').join(', ');
-    const result = await this.env.DB
-      .prepare(`
-        SELECT sc.subscription_id, vc.*
-        FROM subscription_channels sc
-        JOIN verified_channels vc ON vc.id = sc.channel_id
-        WHERE sc.subscription_id IN (${placeholders})
-        ORDER BY sc.subscription_id ASC, vc.created_at ASC
-      `)
-      .bind(...subscriptionIds)
-      .all();
+    const chunkSize = 90;
+    for (let i = 0; i < subscriptionIds.length; i += chunkSize) {
+      const chunk = subscriptionIds.slice(i, i + chunkSize);
+      const placeholders = chunk.map(() => '?').join(', ');
+      const result = await this.env.DB
+        .prepare(`
+          SELECT sc.subscription_id, vc.*
+          FROM subscription_channels sc
+          JOIN verified_channels vc ON vc.id = sc.channel_id
+          WHERE sc.subscription_id IN (${placeholders})
+          ORDER BY sc.subscription_id ASC, vc.created_at ASC
+        `)
+        .bind(...chunk)
+        .all();
 
-    type SubscriptionChannelRow = VerifiedChannel & { subscription_id: number };
-    const rows = (result.results || []) as unknown as SubscriptionChannelRow[];
+      type SubscriptionChannelRow = VerifiedChannel & { subscription_id: number };
+      const rows = (result.results || []) as unknown as SubscriptionChannelRow[];
 
-    for (const row of rows) {
-      const { subscription_id, ...channelData } = row;
-      const existing = channelsBySubscription.get(subscription_id) || [];
-      existing.push(channelData as VerifiedChannel);
-      channelsBySubscription.set(subscription_id, existing);
+      for (const row of rows) {
+        const { subscription_id, ...channelData } = row;
+        const existing = channelsBySubscription.get(subscription_id) || [];
+        existing.push(channelData as VerifiedChannel);
+        channelsBySubscription.set(subscription_id, existing);
+      }
     }
 
     return channelsBySubscription;

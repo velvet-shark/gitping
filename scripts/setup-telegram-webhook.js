@@ -5,12 +5,20 @@
  */
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
 const WEBHOOK_URL = process.env.WEBHOOK_URL || 'https://gitping-api.vlvt.sh/webhook/telegram';
 
 async function setupWebhook() {
   if (!TELEGRAM_BOT_TOKEN) {
     console.error('❌ TELEGRAM_BOT_TOKEN environment variable is required');
     console.log('Set it with: export TELEGRAM_BOT_TOKEN=your_bot_token');
+    process.exit(1);
+  }
+
+  if (!TELEGRAM_WEBHOOK_SECRET) {
+    console.error('❌ TELEGRAM_WEBHOOK_SECRET environment variable is required');
+    console.log('Generate one with: export TELEGRAM_WEBHOOK_SECRET=$(openssl rand -hex 32)');
+    console.log('And set the same value in Wrangler: wrangler secret put TELEGRAM_WEBHOOK_SECRET --config wrangler-api.toml');
     process.exit(1);
   }
 
@@ -25,6 +33,7 @@ async function setupWebhook() {
       },
       body: JSON.stringify({
         url: WEBHOOK_URL,
+        secret_token: TELEGRAM_WEBHOOK_SECRET,
         allowed_updates: ['message', 'callback_query']
       })
     });
